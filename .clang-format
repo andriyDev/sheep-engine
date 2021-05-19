@@ -1,0 +1,7 @@
+BasedOnStyle: Google
+---
+Language: Cpp
+UseCRLF: false
+DeriveLineEnding: false
+DerivePointerAlignment: false
+PointerAlignment: Left
