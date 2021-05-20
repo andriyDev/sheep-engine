@@ -1,4 +1,6 @@
 
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
 #include <stdio.h>
 
 #include <memory>
@@ -6,25 +8,36 @@
 
 #include "resource.h"
 
-class TextTest {
- public:
-  using detail_type = std::string;
-
-  static std::shared_ptr<TextTest> Load(const std::string& text) {
-    return std::shared_ptr<TextTest>(new TextTest{text});
-  }
-
-  std::string value;
-};
+void glfw_error(int error, const char* description) {
+  fprintf(stderr, "GLFW Error: %s\n", description);
+}
 
 int main() {
-  ResourceLoader loader;
-  loader.Add<TextTest>("a", "Text A");
-  loader.Add<TextTest>("b", "Text B");
-  loader.Add<TextTest>("c", "Text C");
+  if (!glfwInit()) {
+    fprintf(stderr, "Error initializing GLFW\n");
+    return 1;
+  }
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+  GLFWwindow* window = glfwCreateWindow(1280, 720, "Title", NULL, NULL);
+  if (!window) {
+    fprintf(stderr, "Failed to create window.\n");
+    return 1;
+  }
+  glfwMakeContextCurrent(window);
 
-  printf("a = %s\n", loader.Load<TextTest>("a")->value.c_str());
-  printf("b = %s\n", loader.Load<TextTest>("b")->value.c_str());
-  printf("c = %s\n", loader.Load<TextTest>("c")->value.c_str());
+  const GLenum err = glewInit();
+  if (err != GLEW_OK) {
+    fprintf(stderr, "Error initializing GLEW : %s\n", glewGetErrorString(err));
+    return 1;
+  }
+
+  while (!glfwWindowShouldClose(window)) {
+    glfwSwapBuffers(window);
+    glfwPollEvents();
+  }
+
+  glfwDestroyWindow(window);
+  glfwTerminate();
   return 0;
 }
