@@ -118,3 +118,7 @@ std::shared_ptr<Program> Program::Load(const Details& details) {
 Program::~Program() { glDeleteProgram(id); }
 
 void Program::Use() { glUseProgram(id); }
+
+GLuint Program::GetUniformLocation(const std::string& name) const {
+  return glGetUniformLocation(id, name.c_str());
+}

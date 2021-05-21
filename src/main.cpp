@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 #include <stdio.h>
 
+#include <glm/gtc/matrix_transform.hpp>
 #include <memory>
 #include <string>
 
@@ -15,17 +16,17 @@ std::shared_ptr<RenderableMesh> triangleVao() {
   source_mesh->vertices = {{glm::vec3(-1.f, -1.f, 0.f)},
                            {glm::vec3(1.f, -1.f, 0.f)},
                            {glm::vec3(0.f, 1.f, 0.f)}};
-  source_mesh->small_triangles = {{0, 1, 2}};
+  source_mesh->triangles = {{0, 1, 2}};
 
   return RenderableMesh::LoadFromMesh(source_mesh);
 }
 
-#define VERTEX_SHADER                        \
-  "#version 330 core\n"                      \
-  "layout(location = 0) in vec3 position;\n" \
-  "void main() {\n"                          \
-  "  gl_Position.xyz = position;\n"          \
-  "  gl_Position.w = 1.0;\n"                 \
+#define VERTEX_SHADER                            \
+  "#version 330 core\n"                          \
+  "layout(location = 0) in vec3 position;\n"     \
+  "uniform mat4 MVP;\n"                          \
+  "void main() {\n"                              \
+  "  gl_Position = MVP * vec4(position, 1.0);\n" \
   "}\n"
 #define FRAGMENT_SHADER      \
   "#version 330 core\n"      \
@@ -80,8 +81,19 @@ int main() {
   }
   std::shared_ptr<RenderableMesh> mesh = triangleVao();
 
+  GLuint mvp_location = material->GetUniformLocation("MVP");
+
+  glClearColor(0.f, 0.f, 0.4f, 0.f);
+
   while (!glfwWindowShouldClose(window)) {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     material->Use();
+
+    glm::mat4 mvp =
+        glm::perspective(glm::radians(90.0f), 1280.f / 720.f, 0.1f, 100.f) *
+        glm::lookAt(glm::vec3(4, 3, 3), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+
+    glUniformMatrix4fv(mvp_location, 1, GL_FALSE, &mvp[0][0]);
     mesh->Draw();
 
     glfwSwapBuffers(window);

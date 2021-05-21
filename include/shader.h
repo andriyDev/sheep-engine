@@ -42,6 +42,8 @@ class Program {
 
   void Use();
 
+  GLuint GetUniformLocation(const std::string& name) const;
+
  private:
   GLuint id = 0;
 };
