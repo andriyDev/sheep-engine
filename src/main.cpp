@@ -6,31 +6,18 @@
 #include <memory>
 #include <string>
 
+#include "mesh.h"
 #include "resource.h"
 #include "shader.h"
 
-struct Mesh {
-  GLuint vao;
-  GLuint vbo;
-};
+std::shared_ptr<RenderableMesh> triangleVao() {
+  std::shared_ptr<Mesh> source_mesh(new Mesh());
+  source_mesh->vertices = {{glm::vec3(-1.f, -1.f, 0.f)},
+                           {glm::vec3(1.f, -1.f, 0.f)},
+                           {glm::vec3(0.f, 1.f, 0.f)}};
+  source_mesh->small_triangles = {{0, 1, 2}};
 
-Mesh triangleVao() {
-  Mesh mesh;
-  glGenVertexArrays(1, &mesh.vao);
-  glBindVertexArray(mesh.vao);
-
-  static const GLfloat data[] = {
-      -1.f, -1.f, 0.f, 1.f, -1.f, 0.f, 0.f, 1.f, 0.f,
-  };
-
-  glGenBuffers(1, &mesh.vbo);
-  glBindBuffer(GL_ARRAY_BUFFER, mesh.vbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW);
-
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-
-  return mesh;
+  return RenderableMesh::LoadFromMesh(source_mesh);
 }
 
 #define VERTEX_SHADER                        \
@@ -91,20 +78,15 @@ int main() {
   if (!material) {
     return 1;
   }
-  Mesh mesh = triangleVao();
+  std::shared_ptr<RenderableMesh> mesh = triangleVao();
 
   while (!glfwWindowShouldClose(window)) {
     material->Use();
-    glEnableVertexAttribArray(0);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
-    glDisableVertexAttribArray(0);
+    mesh->Draw();
 
     glfwSwapBuffers(window);
     glfwPollEvents();
   }
-
-  glDeleteBuffers(1, &mesh.vbo);
-  glDeleteVertexArrays(1, &mesh.vao);
 
   glfwDestroyWindow(window);
   glfwTerminate();
