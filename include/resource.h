@@ -16,6 +16,7 @@ class ResourceLoader {
   std::shared_ptr<T> Load(const std::string& resourceName) {
     auto info_it = resourceInfo.find(resourceName);
     if (info_it == resourceInfo.end()) {
+      fprintf(stderr, "Failed to load resource: %s\n", resourceName.c_str());
       return nullptr;
     }
     assert(info_it->second.type == typeid(T));
