@@ -9,5 +9,6 @@ glew_dep = dependency('glew')
 
 executable('sheep', [
   'src/main.cpp',
-  'src/resource.cpp'
+  'src/resource.cpp',
+  'src/shader.cpp'
 ], dependencies: [ glfw_dep, gl_dep, glew_dep ], include_directories: inc)
