@@ -52,7 +52,11 @@ class ResourceLoader {
     assert(resourceInfo.insert(std::move(info_pair)).second);
   }
 
+  static ResourceLoader& Get() { return instance; }
+
  private:
+  static ResourceLoader instance;
+
   template <typename T>
   struct DetailsContainer {
     DetailsContainer(const T& value) : contents(value) {}
