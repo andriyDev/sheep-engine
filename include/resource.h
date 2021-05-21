@@ -35,6 +35,10 @@ class ResourceLoader {
     info_it->second.ref = ptr;
     // No longer loading the resource.
     loadingResources.erase(resourceName);
+    // If in manual release mode, store the resource to hold it.
+    if (holdResources) {
+      heldResources.push_back(ptr);
+    }
     return ptr;
   }
 
@@ -50,6 +54,29 @@ class ResourceLoader {
                 details),
             std::weak_ptr<T>(), typeid(T)});
     assert(resourceInfo.insert(std::move(info_pair)).second);
+  }
+
+  // Sets loader to hold any resources loaded afterwards. These resources are
+  // guaranteed not to unload until `UseManualRelease(false)` or `ManualRelease`
+  // is called.
+  void UseManualRelease(bool use) {
+    if (use == holdResources) {
+      return;
+    }
+    if (!use) {
+      ManualRelease();
+    }
+    holdResources = use;
+  }
+
+  // Releases any resources that are currently being held. If these resources
+  // have no other references, the resource will be unloaded. If
+  // `UseManualRelease(true)` has not been called, does nothing.
+  void ManualRelease() {
+    if (!holdResources) {
+      return;
+    }
+    heldResources.clear();
   }
 
   static ResourceLoader& Get() { return instance; }
@@ -71,4 +98,6 @@ class ResourceLoader {
 
   std::unordered_map<std::string, ResourceInfo> resourceInfo;
   std::unordered_set<std::string> loadingResources;
+  std::vector<std::shared_ptr<void>> heldResources;
+  bool holdResources;
 };
