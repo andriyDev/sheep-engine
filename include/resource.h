@@ -28,15 +28,20 @@ class ResourceLoader {
     // Crash if dependencies form a cycle.
     assert(loadingResources.insert(resourceName).second);
 
+    IncrementLoadingDepth();
+
     const auto details_ptr =
         static_cast<DetailsContainer<typename T::detail_type>*>(
             info_it->second.detailsContainer.get());
     ptr = T::Load(details_ptr->contents);
     info_it->second.ref = ptr;
+
+    DecrementLoadingDepth();
+
     // No longer loading the resource.
     loadingResources.erase(resourceName);
-    // If in manual release mode, store the resource to hold it.
-    if (holdResources) {
+    // If loading depth is non-zero, hold the resource.
+    if (loadingDepth > 0) {
       heldResources.push_back(ptr);
     }
     return ptr;
@@ -56,28 +61,18 @@ class ResourceLoader {
     assert(resourceInfo.insert(std::move(info_pair)).second);
   }
 
-  // Sets loader to hold any resources loaded afterwards. These resources are
-  // guaranteed not to unload until `UseManualRelease(false)` or `ManualRelease`
-  // is called.
-  void UseManualRelease(bool use) {
-    if (use == holdResources) {
-      return;
-    }
-    if (!use) {
-      ManualRelease();
-    }
-    holdResources = use;
-  }
+  // Adds 1 to depth of the loader. While loading depth is greater than 0
+  // (default value), newly loaded resources are not allowed to unload.
+  void IncrementLoadingDepth() { loadingDepth++; }
+
+  // Subtracts 1 from depth of the loader. While loading depth is greater than 0
+  // (default value), newly loaded resource are not allowed to unload. Crashes
+  // if loading depth becomes negative.
+  void DecrementLoadingDepth() { loadingDepth--; }
 
   // Releases any resources that are currently being held. If these resources
-  // have no other references, the resource will be unloaded. If
-  // `UseManualRelease(true)` has not been called, does nothing.
-  void ManualRelease() {
-    if (!holdResources) {
-      return;
-    }
-    heldResources.clear();
-  }
+  // have no other references, the resource will be unloaded.
+  void ManualRelease() { heldResources.clear(); }
 
   static ResourceLoader& Get() { return instance; }
 
@@ -99,5 +94,5 @@ class ResourceLoader {
   std::unordered_map<std::string, ResourceInfo> resourceInfo;
   std::unordered_set<std::string> loadingResources;
   std::vector<std::shared_ptr<void>> heldResources;
-  bool holdResources;
+  int loadingDepth = 0;
 };
