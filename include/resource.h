@@ -12,16 +12,16 @@
 class ResourceLoader {
  public:
   // Loads a resource by `resourceName` given its type.
-  template <typename T>
-  std::shared_ptr<T> Load(const std::string& resourceName) {
+  template <typename ResourceType>
+  std::shared_ptr<ResourceType> Load(const std::string& resourceName) {
     auto info_it = resourceInfo.find(resourceName);
     if (info_it == resourceInfo.end()) {
       fprintf(stderr, "Failed to load resource: %s\n", resourceName.c_str());
       return nullptr;
     }
-    assert(info_it->second.type == typeid(T));
-    std::shared_ptr<T> ptr =
-        std::static_pointer_cast<T>(info_it->second.ref.lock());
+    assert(info_it->second.type == typeid(ResourceType));
+    std::shared_ptr<ResourceType> ptr =
+        std::static_pointer_cast<ResourceType>(info_it->second.ref.lock());
     if (ptr) {
       return ptr;
     }
@@ -31,10 +31,9 @@ class ResourceLoader {
 
     IncrementLoadingDepth();
 
-    const auto details_ptr =
-        static_cast<DetailsContainer<typename T::detail_type>*>(
-            info_it->second.detailsContainer.get());
-    ptr = T::Load(details_ptr->contents);
+    const auto loader_ptr = static_cast<Loader<ResourceType>*>(
+        info_it->second.loaderContainer.get());
+    ptr = loader_ptr->Load();
     info_it->second.ref = ptr;
 
     DecrementLoadingDepth();
@@ -50,15 +49,25 @@ class ResourceLoader {
 
   // Adds a new resource with its `resourceName` and the `details` required to
   // load it.
-  template <typename T>
+  template <typename ResourceType>
   void Add(const std::string& resourceName,
-           const typename T::detail_type& details) {
+           const typename ResourceType::detail_type& details) {
+    Add<ResourceType, typename ResourceType::detail_type>(
+        resourceName, ResourceType::Load, details);
+  }
+
+  // Adds a new resource with its `resourceName` and the `details` required to
+  // load it.
+  template <typename ResourceType, typename DetailType>
+  void Add(const std::string& resourceName,
+           std::shared_ptr<ResourceType> (*loader)(const DetailType&),
+           const DetailType& details) {
     auto info_pair = std::make_pair(
         resourceName,
         ResourceInfo{
-            std::make_shared<DetailsContainer<typename T::detail_type>>(
-                details),
-            std::weak_ptr<T>(), typeid(T)});
+            std::make_shared<LoaderContainer<ResourceType, DetailType>>(
+                loader, details),
+            std::weak_ptr<ResourceType>(), typeid(ResourceType)});
     assert(resourceInfo.insert(std::move(info_pair)).second);
   }
 
@@ -80,14 +89,24 @@ class ResourceLoader {
  private:
   static ResourceLoader instance;
 
-  template <typename T>
-  struct DetailsContainer {
-    DetailsContainer(const T& value) : contents(value) {}
+  template <typename Resource>
+  struct Loader {
+    virtual std::shared_ptr<Resource> Load() = 0;
+  };
 
-    const T contents;
+  template <typename ResourceType, typename Details>
+  struct LoaderContainer : public Loader<ResourceType> {
+    LoaderContainer(std::shared_ptr<ResourceType> (*loader_)(const Details&),
+                    const Details& value)
+        : loader(loader_), contents(value) {}
+
+    std::shared_ptr<ResourceType> (*loader)(const Details&);
+    const Details contents;
+
+    std::shared_ptr<ResourceType> Load() override { return loader(contents); }
   };
   struct ResourceInfo {
-    std::shared_ptr<void> detailsContainer;
+    std::shared_ptr<void> loaderContainer;
     std::weak_ptr<void> ref;
     const std::type_index type;
   };
