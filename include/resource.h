@@ -2,6 +2,7 @@
 
 #include <assert.h>
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <typeindex>
@@ -56,8 +57,8 @@ class ResourceLoader {
         resourceName, ResourceType::Load, details);
   }
 
-  // Adds a new resource with its `resourceName` and the `details` required to
-  // load it.
+  // Adds a new resource with its `resourceName` using `loader` and the
+  // `details` required to load it.
   template <typename ResourceType, typename DetailType>
   void Add(const std::string& resourceName,
            std::shared_ptr<ResourceType> (*loader)(const DetailType&),
@@ -68,6 +69,18 @@ class ResourceLoader {
             std::make_shared<LoaderContainer<ResourceType, DetailType>>(
                 loader, details),
             std::weak_ptr<ResourceType>(), typeid(ResourceType)});
+    assert(resourceInfo.insert(std::move(info_pair)).second);
+  }
+
+  // Adds a new resource with its `resourceName` and the `loader` function to
+  // load it.
+  template <typename ResourceType>
+  void Add(const std::string& resourceName,
+           std::function<std::shared_ptr<ResourceType>()> loader) {
+    auto info_pair = std::make_pair(
+        resourceName,
+        ResourceInfo{std::make_shared<RawLoaderContainer<ResourceType>>(loader),
+                     std::weak_ptr<ResourceType>(), typeid(ResourceType)});
     assert(resourceInfo.insert(std::move(info_pair)).second);
   }
 
@@ -105,6 +118,17 @@ class ResourceLoader {
 
     std::shared_ptr<ResourceType> Load() override { return loader(contents); }
   };
+
+  template <typename ResourceType>
+  struct RawLoaderContainer : public Loader<ResourceType> {
+    RawLoaderContainer(std::function<std::shared_ptr<ResourceType>()> loader_)
+        : loader(loader_) {}
+
+    std::function<std::shared_ptr<ResourceType>()> loader;
+
+    std::shared_ptr<ResourceType> Load() override { return loader(); }
+  };
+
   struct ResourceInfo {
     std::shared_ptr<void> loaderContainer;
     std::weak_ptr<void> ref;

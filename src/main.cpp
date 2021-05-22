@@ -11,14 +11,13 @@
 #include "resource.h"
 #include "shader.h"
 
-std::shared_ptr<RenderableMesh> triangleVao() {
+std::shared_ptr<Mesh> triangleMesh() {
   std::shared_ptr<Mesh> source_mesh(new Mesh());
   source_mesh->vertices = {{glm::vec3(-1.f, -1.f, 0.f)},
                            {glm::vec3(1.f, -1.f, 0.f)},
                            {glm::vec3(0.f, 1.f, 0.f)}};
   source_mesh->triangles = {{0, 1, 2}};
-
-  return RenderableMesh::LoadFromMesh(source_mesh);
+  return source_mesh;
 }
 
 #define VERTEX_SHADER                            \
@@ -46,6 +45,10 @@ void initResources() {
   ResourceLoader::Get().Add<Program>(
       "main_program",
       Program::Details{{"main_shader_vertex"}, {"main_shader_fragment"}});
+
+  ResourceLoader::Get().Add<Mesh>("triangle_mesh", triangleMesh);
+  ResourceLoader::Get().Add<RenderableMesh>("triangle_rmesh",
+                                            {"triangle_mesh"});
 }
 
 void glfw_error(int error, const char* description) {
@@ -79,7 +82,8 @@ int main() {
   if (!material) {
     return 1;
   }
-  std::shared_ptr<RenderableMesh> mesh = triangleVao();
+  std::shared_ptr<RenderableMesh> mesh =
+      ResourceLoader::Get().Load<RenderableMesh>("triangle_rmesh");
 
   GLuint mvp_location = material->GetUniformLocation("MVP");
 
