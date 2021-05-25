@@ -6,10 +6,12 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <memory>
+#include <sstream>
 #include <string>
 
 #include "mesh.h"
 #include "mesh_formats/obj_mesh.h"
+#include "nodes/node.h"
 #include "resource.h"
 #include "shader.h"
 
@@ -64,6 +66,12 @@ void initResources() {
   ResourceLoader::Get().Add<RenderableMesh>("obj_rmesh", {"obj_mesh"});
 }
 
+std::shared_ptr<Node> makeNamedNode(const std::string& name) {
+  std::shared_ptr<Node> node(new Node());
+  node->name = name;
+  return node;
+}
+
 void glfw_error(int error, const char* description) {
   fprintf(stderr, "GLFW Error: %s\n", description);
 }
@@ -90,6 +98,51 @@ int main() {
 
   initResources();
 
+  const std::shared_ptr<Node> root = makeNamedNode("root");
+  {
+    const std::shared_ptr<Node> branch1 = makeNamedNode("branch1");
+    root->AdoptNode(branch1);
+    {
+      const std::shared_ptr<Node> leaf1 = makeNamedNode("leaf1");
+      branch1->AdoptNode(leaf1);
+      const std::shared_ptr<Node> branch2 = makeNamedNode("branch2");
+      branch1->AdoptNode(branch2);
+      {
+        const std::shared_ptr<Node> leaf2 = makeNamedNode("leaf2");
+        branch2->AdoptNode(leaf2);
+        const std::shared_ptr<Node> leaf3 = makeNamedNode("leaf3");
+        branch2->AdoptNode(leaf3);
+      }
+    }
+    const std::shared_ptr<Node> leaf4 = makeNamedNode("leaf4");
+    root->AdoptNode(leaf4);
+  }
+
+  const std::function<void(const std::shared_ptr<Node>&, int,
+                           std::stringstream&)>
+      print_node_tree = [&print_node_tree](const std::shared_ptr<Node>& node,
+                                           int indent,
+                                           std::stringstream& out_stream) {
+        for (int i = 0; i < indent; i++) {
+          out_stream << "  ";
+        }
+        if (node->GetChildren().size() == 0) {
+          out_stream << node->name << " {}" << std::endl;
+        } else {
+          out_stream << node->name << " {" << std::endl;
+          for (const std::shared_ptr<Node>& child : node->GetChildren()) {
+            print_node_tree(child, indent + 1, out_stream);
+          }
+          for (int i = 0; i < indent; i++) {
+            out_stream << "  ";
+          }
+          out_stream << "}" << std::endl;
+        }
+      };
+  std::stringstream ss;
+  print_node_tree(root, 0, ss);
+  printf("%s\n", ss.str().c_str());
+
   std::shared_ptr<Program> material =
       ResourceLoader::Get().Load<Program>("main_program");
   if (!material) {
@@ -97,6 +150,9 @@ int main() {
   }
   std::shared_ptr<RenderableMesh> mesh =
       ResourceLoader::Get().Load<RenderableMesh>("obj_rmesh");
+  if (!mesh) {
+    return 1;
+  }
 
   GLuint mvp_location = material->GetUniformLocation("MVP");
 
