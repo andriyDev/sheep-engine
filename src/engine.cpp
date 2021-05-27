@@ -18,3 +18,21 @@ void Engine::RemoveWorld(const std::shared_ptr<World>& world) {
 const std::vector<std::shared_ptr<World>>& Engine::GetWorlds() const {
   return worlds;
 }
+
+void Engine::Update(float delta_seconds) {
+  for (const std::shared_ptr<World>& world : worlds) {
+    world->Update(delta_seconds);
+  }
+}
+
+void Engine::FixedUpdate(float delta_seconds) {
+  for (const std::shared_ptr<World>& world : worlds) {
+    world->FixedUpdate(delta_seconds);
+  }
+}
+
+void Engine::LateUpdate(float delta_seconds) {
+  for (const std::shared_ptr<World>& world : worlds) {
+    world->LateUpdate(delta_seconds);
+  }
+}

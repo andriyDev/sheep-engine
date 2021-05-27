@@ -62,3 +62,21 @@ void World::PropagateNodeDetachment(const std::shared_ptr<Node>& node) {
     system->NotifyOfNodeDetachment(node);
   }
 }
+
+void World::Update(float delta_seconds) {
+  for (const std::shared_ptr<System>& system : systems) {
+    system->Update(delta_seconds);
+  }
+}
+
+void World::FixedUpdate(float delta_seconds) {
+  for (const std::shared_ptr<System>& system : systems) {
+    system->FixedUpdate(delta_seconds);
+  }
+}
+
+void World::LateUpdate(float delta_seconds) {
+  for (const std::shared_ptr<System>& system : systems) {
+    system->LateUpdate(delta_seconds);
+  }
+}

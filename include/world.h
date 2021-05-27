@@ -27,6 +27,17 @@ class World : public std::enable_shared_from_this<World> {
  private:
   World();
 
+  // Performs an update on all systems every frame. Occurs at the start of a
+  // frame. `delta_seconds` is the amount of time passed for this frame.
+  void Update(float delta_seconds);
+  // Performs an update on all systems at a fixed rate. Can occur multiple times
+  // in one frame to "catch up". Occurs in the middle of a frame.
+  // `delta_seconds` is the amount of time each fixed frame takes.
+  void FixedUpdate(float delta_seconds);
+  // Performs an update on all systems every frame. Occurs at the end of a
+  // frame. `delta_seconds` is the amount of time passed for this frame.
+  void LateUpdate(float delta_seconds);
+
   void PropagateNodeAttachment(const std::shared_ptr<Node>& node);
   void PropagateNodeDetachment(const std::shared_ptr<Node>& node);
 
