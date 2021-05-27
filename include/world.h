@@ -27,10 +27,14 @@ class World : public std::enable_shared_from_this<World> {
  private:
   World();
 
+  void PropagateNodeAttachment(const std::shared_ptr<Node>& node);
+  void PropagateNodeDetachment(const std::shared_ptr<Node>& node);
+
   std::shared_ptr<Node> root;
   std::vector<std::shared_ptr<System>> systems;
 
   std::weak_ptr<Engine> engine;
 
   friend class Engine;
+  friend class Node;
 };

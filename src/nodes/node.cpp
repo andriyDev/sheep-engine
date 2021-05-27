@@ -4,6 +4,8 @@
 #include <assert.h>
 #include <stdio.h>
 
+#include "world.h"
+
 void Node::AttachNode(const std::shared_ptr<Node>& child, int index) {
   assert(child.get());
   assert(!child->GetParent().get());
@@ -16,11 +18,22 @@ void Node::AttachNode(const std::shared_ptr<Node>& child, int index) {
     assert(index < children.size());
   }
   children.insert(children.begin() + index, child);
+
+  const std::shared_ptr<World> world = GetWorld();
+  if (world) {
+    world->PropagateNodeAttachment(child);
+  }
 }
 
 void Node::DetachNode(const std::shared_ptr<Node>& child) {
   assert(child.get());
   assert(child->GetParent().get() == this);
+
+  const std::shared_ptr<World> world = GetWorld();
+  if (world) {
+    world->PropagateNodeAttachment(child);
+  }
+
   child->world = std::shared_ptr<World>();
   child->parent = std::shared_ptr<Node>();
   const auto node_it = std::find(children.begin(), children.end(), child);

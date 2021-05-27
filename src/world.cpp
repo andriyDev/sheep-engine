@@ -6,14 +6,19 @@
 World::World() {
   root = std::shared_ptr<Node>(new Node());
   root->world = this->shared_from_this();
+
+  PropagateNodeAttachment(root);
 }
 
 void World::SetRoot(const std::shared_ptr<Node>& new_root) {
+  PropagateNodeDetachment(root);
   root->world = std::shared_ptr<World>();
 
   assert(new_root.get());
   root = new_root;
   root->world = this->shared_from_this();
+
+  PropagateNodeAttachment(root);
 }
 
 void World::AddSystem(const std::shared_ptr<System>& new_system, int index) {
@@ -27,6 +32,8 @@ void World::AddSystem(const std::shared_ptr<System>& new_system, int index) {
     assert(index < systems.size());
   }
   systems.insert(systems.begin() + index, new_system);
+
+  new_system->NotifyOfNodeAttachment(root);
 }
 
 void World::RemoveSystem(const std::shared_ptr<System>& system) {
@@ -42,4 +49,16 @@ std::shared_ptr<Engine> World::GetEngine() const { return engine.lock(); }
 
 const std::vector<std::shared_ptr<System>>& World::GetSystems() const {
   return systems;
+}
+
+void World::PropagateNodeAttachment(const std::shared_ptr<Node>& node) {
+  for (const std::shared_ptr<System>& system : systems) {
+    system->NotifyOfNodeAttachment(node);
+  }
+}
+
+void World::PropagateNodeDetachment(const std::shared_ptr<Node>& node) {
+  for (const std::shared_ptr<System>& system : systems) {
+    system->NotifyOfNodeDetachment(node);
+  }
 }
