@@ -101,21 +101,21 @@ int main() {
   const std::shared_ptr<Node> root = makeNamedNode("root");
   {
     const std::shared_ptr<Node> branch1 = makeNamedNode("branch1");
-    root->AdoptNode(branch1);
+    branch1->AttachTo(root);
     {
       const std::shared_ptr<Node> leaf1 = makeNamedNode("leaf1");
-      branch1->AdoptNode(leaf1);
+      leaf1->AttachTo(branch1);
       const std::shared_ptr<Node> branch2 = makeNamedNode("branch2");
-      branch1->AdoptNode(branch2);
+      branch2->AttachTo(branch1);
       {
         const std::shared_ptr<Node> leaf2 = makeNamedNode("leaf2");
-        branch2->AdoptNode(leaf2);
+        leaf2->AttachTo(branch2);
         const std::shared_ptr<Node> leaf3 = makeNamedNode("leaf3");
-        branch2->AdoptNode(leaf3);
+        leaf3->AttachTo(branch2);
       }
     }
     const std::shared_ptr<Node> leaf4 = makeNamedNode("leaf4");
-    root->AdoptNode(leaf4);
+    leaf4->AttachTo(root);
   }
 
   const std::function<void(const std::shared_ptr<Node>&, int,

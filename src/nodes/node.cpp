@@ -27,12 +27,14 @@ void Node::DetachNode(const std::shared_ptr<Node>& child) {
   children.erase(node_it);
 }
 
-void Node::AdoptNode(const std::shared_ptr<Node>& child, int index) {
-  const std::shared_ptr<Node> parent = child->GetParent();
-  if (parent) {
-    parent->DetachNode(child);
+void Node::AttachTo(const std::shared_ptr<Node>& parent, int index) {
+  const std::shared_ptr<Node> old_parent = GetParent();
+  if (old_parent) {
+    old_parent->DetachNode(this->shared_from_this());
   }
-  AttachNode(child, index);
+  if (parent) {
+    parent->AttachNode(this->shared_from_this(), index);
+  }
 }
 
 std::vector<std::shared_ptr<Node>> Node::GetAncestry() const {
