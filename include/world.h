@@ -25,6 +25,8 @@ class World : public std::enable_shared_from_this<World> {
   const std::vector<std::shared_ptr<System>>& GetSystems() const;
 
  private:
+  World();
+
   std::shared_ptr<Node> root;
   std::vector<std::shared_ptr<System>> systems;
 

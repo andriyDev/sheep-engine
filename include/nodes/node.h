@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+class World;
+
 class Node : public std::enable_shared_from_this<Node> {
  public:
   std::string name;
@@ -24,10 +26,15 @@ class Node : public std::enable_shared_from_this<Node> {
   // Returns every node (excluding this) from this to the root.
   std::vector<std::shared_ptr<Node>> GetAncestry() const;
 
+  std::shared_ptr<World> GetWorld() const;
   std::shared_ptr<Node> GetParent() const;
   const std::vector<std::shared_ptr<Node>>& GetChildren() const;
 
  private:
+  std::weak_ptr<World> world;
+
   std::weak_ptr<Node> parent;
   std::vector<std::shared_ptr<Node>> children;
+
+  friend class World;
 };

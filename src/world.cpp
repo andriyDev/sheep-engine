@@ -3,9 +3,17 @@
 
 #include <assert.h>
 
+World::World() {
+  root = std::shared_ptr<Node>(new Node());
+  root->world = this->shared_from_this();
+}
+
 void World::SetRoot(const std::shared_ptr<Node>& new_root) {
+  root->world = std::shared_ptr<World>();
+
   assert(new_root.get());
   root = new_root;
+  root->world = this->shared_from_this();
 }
 
 void World::AddSystem(const std::shared_ptr<System>& new_system, int index) {

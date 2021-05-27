@@ -7,6 +7,7 @@
 void Node::AttachNode(const std::shared_ptr<Node>& child, int index) {
   assert(child.get());
   assert(!child->GetParent().get());
+  child->world = GetWorld();
   child->parent = this->shared_from_this();
   if (index < 0) {
     index += children.size() + 1;
@@ -20,6 +21,7 @@ void Node::AttachNode(const std::shared_ptr<Node>& child, int index) {
 void Node::DetachNode(const std::shared_ptr<Node>& child) {
   assert(child.get());
   assert(child->GetParent().get() == this);
+  child->world = std::shared_ptr<World>();
   child->parent = std::shared_ptr<Node>();
   const auto node_it = std::find(children.begin(), children.end(), child);
   children.erase(node_it);
@@ -42,6 +44,8 @@ std::vector<std::shared_ptr<Node>> Node::GetAncestry() const {
   }
   return ancestors;
 }
+
+std::shared_ptr<World> Node::GetWorld() const { return world.lock(); }
 
 std::shared_ptr<Node> Node::GetParent() const { return parent.lock(); }
 
