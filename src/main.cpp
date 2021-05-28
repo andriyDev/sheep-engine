@@ -14,6 +14,7 @@
 #include "nodes/node.h"
 #include "resource.h"
 #include "shader.h"
+#include "utility/cached.h"
 
 std::shared_ptr<Mesh> triangleMesh() {
   std::shared_ptr<Mesh> source_mesh(new Mesh());
@@ -142,6 +143,18 @@ int main() {
   std::stringstream ss;
   print_node_tree(root, 0, ss);
   printf("%s\n", ss.str().c_str());
+
+  int actual_value = 0;
+  Cached<int> test_cache([&actual_value]() {
+    printf("Compute\n");
+    return actual_value;
+  });
+  printf("Value: %d\n", *test_cache);
+  actual_value = 2;
+  printf("Value: %d\n", *test_cache);
+  test_cache.Invalidate();
+  printf("Invalidated\n");
+  printf("Value: %d\n", *test_cache);
 
   std::shared_ptr<Program> material =
       ResourceLoader::Get().Load<Program>("main_program");
