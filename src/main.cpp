@@ -1,17 +1,19 @@
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <math.h>
 #include <stdio.h>
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/string_cast.hpp>
 #include <memory>
 #include <sstream>
 #include <string>
 
 #include "mesh.h"
 #include "mesh_formats/obj_mesh.h"
-#include "nodes/node.h"
+#include "nodes/transform.h"
 #include "resource.h"
 #include "shader.h"
 #include "utility/cached.h"
@@ -67,8 +69,8 @@ void initResources() {
   ResourceLoader::Get().Add<RenderableMesh>("obj_rmesh", {"obj_mesh"});
 }
 
-std::shared_ptr<Node> makeNamedNode(const std::string& name) {
-  std::shared_ptr<Node> node(new Node());
+std::shared_ptr<Transform> makeNamedTransform(const std::string& name) {
+  std::shared_ptr<Transform> node(new Transform());
   node->name = name;
   return node;
 }
@@ -99,23 +101,35 @@ int main() {
 
   initResources();
 
-  const std::shared_ptr<Node> root = makeNamedNode("root");
+  const std::shared_ptr<Transform> root = makeNamedTransform("root");
+  root->SetPosition(glm::vec3(1, 2, 3));
+  root->SetRotation(glm::angleAxis(45 * 3.14159f / 180.0f, glm::vec3(1, 0, 0)));
+  root->SetScale(glm::vec3(2, 2, 2));
+  printf("Root Position: %s\n", glm::to_string(root->GetMatrix()).c_str());
   {
-    const std::shared_ptr<Node> branch1 = makeNamedNode("branch1");
+    const std::shared_ptr<Transform> branch1 = makeNamedTransform("branch1");
     branch1->AttachTo(root);
+    branch1->SetGlobalPosition(glm::vec3(1, 0, 3));
+    root->SetRotation(
+        glm::angleAxis(45 * 3.14159f / 180.0f, glm::vec3(0, 1, 0)));
+    branch1->SetScale(glm::vec3(1, 2, 3));
+    printf("Branch1 Position: %s\n",
+           glm::to_string(branch1->GetGlobalPosition()).c_str());
+    printf("Lossy Scale: %s\n",
+           glm::to_string(branch1->GetLossyScale()).c_str());
     {
-      const std::shared_ptr<Node> leaf1 = makeNamedNode("leaf1");
+      const std::shared_ptr<Transform> leaf1 = makeNamedTransform("leaf1");
       leaf1->AttachTo(branch1);
-      const std::shared_ptr<Node> branch2 = makeNamedNode("branch2");
+      const std::shared_ptr<Transform> branch2 = makeNamedTransform("branch2");
       branch2->AttachTo(branch1);
       {
-        const std::shared_ptr<Node> leaf2 = makeNamedNode("leaf2");
+        const std::shared_ptr<Transform> leaf2 = makeNamedTransform("leaf2");
         leaf2->AttachTo(branch2);
-        const std::shared_ptr<Node> leaf3 = makeNamedNode("leaf3");
+        const std::shared_ptr<Transform> leaf3 = makeNamedTransform("leaf3");
         leaf3->AttachTo(branch2);
       }
     }
-    const std::shared_ptr<Node> leaf4 = makeNamedNode("leaf4");
+    const std::shared_ptr<Transform> leaf4 = makeNamedTransform("leaf4");
     leaf4->AttachTo(root);
   }
 
@@ -155,6 +169,8 @@ int main() {
   test_cache.Invalidate();
   printf("Invalidated\n");
   printf("Value: %d\n", *test_cache);
+
+  return 0;
 
   std::shared_ptr<Program> material =
       ResourceLoader::Get().Load<Program>("main_program");
