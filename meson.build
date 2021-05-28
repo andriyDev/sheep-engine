@@ -13,6 +13,7 @@ executable('sheep', [
   'src/mesh.cpp',
   'src/mesh_formats/obj_mesh.cpp',
   'src/nodes/node.cpp',
+  'src/nodes/utility.cpp',
   'src/resource.cpp',
   'src/shader.cpp',
   'src/system.cpp',
