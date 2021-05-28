@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "nodes/node.h"
-#include "system.h"
+#include "systems/system.h"
 
 class Engine;
 
