@@ -40,6 +40,12 @@ void World::RemoveSystem(const std::shared_ptr<System>& system) {
   }
 }
 
+std::shared_ptr<Node> World::CreateEmptyRoot() {
+  std::shared_ptr<Node> root(new Node());
+  SetRoot(root);
+  return root;
+}
+
 std::shared_ptr<Node> World::GetRoot() const { return root; }
 
 std::shared_ptr<Engine> World::GetEngine() const { return engine.lock(); }

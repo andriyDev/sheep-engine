@@ -20,6 +20,8 @@ class World : public std::enable_shared_from_this<World> {
   // world.
   void RemoveSystem(const std::shared_ptr<System>& system);
 
+  std::shared_ptr<Node> CreateEmptyRoot();
+
   std::shared_ptr<Node> GetRoot() const;
   std::shared_ptr<Engine> GetEngine() const;
   const std::vector<std::shared_ptr<System>>& GetSystems() const;
