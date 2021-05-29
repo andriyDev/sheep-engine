@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stdio.h>
 
+#include "nodes/utility.h"
 #include "world.h"
 
 void Node::AttachNode(const std::shared_ptr<Node>& child, int index) {
@@ -19,6 +20,10 @@ void Node::AttachNode(const std::shared_ptr<Node>& child, int index) {
   }
   children.insert(children.begin() + index, child);
 
+  for (const std::shared_ptr<Node>& node : CollectPreOrderNodes(child)) {
+    node->NotifyOfAncestorAttachment(this->shared_from_this(), child);
+  }
+
   const std::shared_ptr<World> world = GetWorld();
   if (world) {
     world->PropagateNodeAttachment(child);
@@ -28,6 +33,10 @@ void Node::AttachNode(const std::shared_ptr<Node>& child, int index) {
 void Node::DetachNode(const std::shared_ptr<Node>& child) {
   assert(child.get());
   assert(child->GetParent().get() == this);
+
+  for (const std::shared_ptr<Node>& node : CollectPreOrderNodes(child)) {
+    node->NotifyOfAncestorDetachment(this->shared_from_this(), child);
+  }
 
   const std::shared_ptr<World> world = GetWorld();
   if (world) {

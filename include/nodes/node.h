@@ -33,6 +33,19 @@ class Node : public std::enable_shared_from_this<Node> {
   // node.
   virtual void DetachNode(const std::shared_ptr<Node>& child);
 
+  // Notifies this node that its `root_ancestor` has attached to a `new_parent`.
+  // This is called after attachment has occurred, and after its ancestors have
+  // been notified. `root_ancestor` will also have this called on it.
+  virtual void NotifyOfAncestorAttachment(
+      const std::shared_ptr<Node>& new_parent,
+      const std::shared_ptr<Node>& root_ancestor) {}
+  // Notifies this node that its `root_ancestor` has detached from its `parent`.
+  // This is called before detachment occurs, and after its ancestors have
+  // been notified. `root_ancestor` will also have this called on it.
+  virtual void NotifyOfAncestorDetachment(
+      const std::shared_ptr<Node>& parent,
+      const std::shared_ptr<Node>& root_ancestor) {}
+
  private:
   std::weak_ptr<World> world;
 
