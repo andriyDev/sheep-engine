@@ -25,8 +25,6 @@ class World : public std::enable_shared_from_this<World> {
   const std::vector<std::shared_ptr<System>>& GetSystems() const;
 
  private:
-  World();
-
   // Performs an update on all systems every frame. Occurs at the start of a
   // frame. `delta_seconds` is the amount of time passed for this frame.
   void Update(float delta_seconds);

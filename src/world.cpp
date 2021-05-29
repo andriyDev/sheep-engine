@@ -3,16 +3,11 @@
 
 #include <assert.h>
 
-World::World() {
-  root = std::shared_ptr<Node>(new Node());
-  root->world = this->shared_from_this();
-
-  PropagateNodeAttachment(root);
-}
-
 void World::SetRoot(const std::shared_ptr<Node>& new_root) {
-  PropagateNodeDetachment(root);
-  root->world = std::shared_ptr<World>();
+  if (root) {
+    PropagateNodeDetachment(root);
+    root->world = std::shared_ptr<World>();
+  }
 
   assert(new_root.get());
   root = new_root;
@@ -33,7 +28,9 @@ void World::AddSystem(const std::shared_ptr<System>& new_system, int index) {
   }
   systems.insert(systems.begin() + index, new_system);
 
-  new_system->NotifyOfNodeAttachment(root);
+  if (root) {
+    new_system->NotifyOfNodeAttachment(root);
+  }
 }
 
 void World::RemoveSystem(const std::shared_ptr<System>& system) {
