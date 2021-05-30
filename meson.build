@@ -20,6 +20,7 @@ executable('sheep', [
   'src/resource.cpp',
   'src/shader.cpp',
   'src/systems/render_system.cpp',
+  'src/systems/super_system.cpp',
   'src/systems/system.cpp',
   'src/world.cpp'
 ], dependencies: [ glfw_dep, gl_dep, glew_dep ], include_directories: inc)
