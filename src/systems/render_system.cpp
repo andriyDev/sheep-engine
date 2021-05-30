@@ -77,7 +77,8 @@ void RenderSuperSystem::LateUpdate(float delta_seconds) {
         bool(camera->clear_flags & (Camera::ClearFlags::Colour));
     glClear((GL_COLOR_BUFFER_BIT * clear_colour) |
             (GL_DEPTH_BUFFER_BIT * clear_depth));
-    const glm::mat4 pv = camera->GetProjectionView(1280.f / 720.f);
+    const glm::mat4 pv =
+        camera->GetProjectionView((float)(x2 - x1) / (float)(y2 - y1));
     for (const std::shared_ptr<Renderable>& renderable :
          render_system->renderables) {
       renderable->Render(
