@@ -14,6 +14,7 @@ class MeshRenderer : public Transform, public Renderable {
   std::shared_ptr<Program> material;
 
  protected:
-  void Render(const std::shared_ptr<RenderSystem>& system,
+  void Render(const std::shared_ptr<RenderSuperSystem>& super_system,
+              const std::shared_ptr<RenderSystem>& system,
               const glm::mat4& ProjectionView) override;
 };

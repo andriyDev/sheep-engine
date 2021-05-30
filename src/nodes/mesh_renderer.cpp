@@ -3,8 +3,10 @@
 
 #include <glm/gtx/string_cast.hpp>
 
-void MeshRenderer::Render(const std::shared_ptr<RenderSystem>& system,
-                          const glm::mat4& ProjectionView) {
+void MeshRenderer::Render(
+    const std::shared_ptr<RenderSuperSystem>& super_system,
+    const std::shared_ptr<RenderSystem>& system,
+    const glm::mat4& ProjectionView) {
   if (!material || !mesh) {
     return;
   }

@@ -99,6 +99,7 @@ int main() {
   initResources();
 
   std::shared_ptr<Engine> engine(new Engine());
+  engine->AddSuperSystem(std::make_shared<RenderSuperSystem>());
   std::shared_ptr<World> world = engine->CreateWorld();
   world->CreateEmptyRoot();
   world->AddSystem(std::make_shared<RenderSystem>());
@@ -147,8 +148,6 @@ int main() {
     camera_pivot->SetRotation(
         camera_pivot->GetRotation() *
         glm::angleAxis(45 * 3.14159f / 180 * (float)delta, glm::vec3(0, 1, 0)));
-    printf("Global Position: %s\n",
-           glm::to_string(camera->GetGlobalPosition()).c_str());
 
     engine->Update(delta);
     engine->FixedUpdate(delta);
