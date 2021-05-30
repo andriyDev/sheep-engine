@@ -12,8 +12,12 @@ class Engine : public std::enable_shared_from_this<Engine> {
   std::shared_ptr<World> CreateWorld();
   void RemoveWorld(const std::shared_ptr<World>& world);
 
-  void AddSuperSystem(const std::shared_ptr<SuperSystem>& super_system,
-                      int index = -1);
+  // Adds `super_system` to this engine at `index`. If `index` is negative,
+  // indexes from the end. Returns `super_system`.
+  const std::shared_ptr<SuperSystem>& AddSuperSystem(
+      const std::shared_ptr<SuperSystem>& super_system, int index = -1);
+  // Removes `super_system` from this engine. Crashes if `super_system` is not
+  // added to this engine.
   void RemoveSuperSystem(const std::shared_ptr<SuperSystem>& super_system);
 
   // Performs an update on all worlds every frame. Occurs at the start of a

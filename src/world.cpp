@@ -18,7 +18,8 @@ void World::SetRoot(const std::shared_ptr<Node>& new_root) {
   PropagateNodeAttachment(root);
 }
 
-void World::AddSystem(const std::shared_ptr<System>& new_system, int index) {
+const std::shared_ptr<System>& World::AddSystem(
+    const std::shared_ptr<System>& new_system, int index) {
   // Only allow adding `new_system` if it is not a part of some world.
   assert(!new_system->GetWorld().get());
   const std::shared_ptr<World> this_ptr = this->shared_from_this();
@@ -36,6 +37,7 @@ void World::AddSystem(const std::shared_ptr<System>& new_system, int index) {
   }
 
   GetEngine()->PropagateSystemAddition(this_ptr, new_system);
+  return new_system;
 }
 
 void World::RemoveSystem(const std::shared_ptr<System>& system) {

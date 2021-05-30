@@ -14,8 +14,9 @@ class World : public std::enable_shared_from_this<World> {
   // Sets the root to `new_root`.
   void SetRoot(const std::shared_ptr<Node>& new_root);
   // Adds `new_system` to this world at `index`. Negative values of `index`
-  // index from the end.
-  void AddSystem(const std::shared_ptr<System>& new_system, int index = -1);
+  // index from the end. Returns `new_system`.
+  const std::shared_ptr<System>& AddSystem(
+      const std::shared_ptr<System>& new_system, int index = -1);
   // Removes `system` from this world. No error if `system` is not in this
   // world.
   void RemoveSystem(const std::shared_ptr<System>& system);

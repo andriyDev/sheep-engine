@@ -26,8 +26,8 @@ void Engine::RemoveWorld(const std::shared_ptr<World>& world) {
   }
 }
 
-void Engine::AddSuperSystem(const std::shared_ptr<SuperSystem>& super_system,
-                            int index) {
+const std::shared_ptr<SuperSystem>& Engine::AddSuperSystem(
+    const std::shared_ptr<SuperSystem>& super_system, int index) {
   // Only allow adding `super_system` if it is not a part of some engine.
   assert(!super_system->GetEngine().get());
   super_system->engine = this->shared_from_this();
@@ -38,6 +38,7 @@ void Engine::AddSuperSystem(const std::shared_ptr<SuperSystem>& super_system,
     assert(index < super_systems.size());
   }
   super_systems.insert(super_systems.begin() + index, super_system);
+  return super_system;
 }
 
 void Engine::RemoveSuperSystem(
