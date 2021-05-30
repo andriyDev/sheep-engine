@@ -47,7 +47,9 @@ void RenderSuperSystem::LateUpdate(float delta_seconds) {
       ordered_cameras;
   for (const std::shared_ptr<RenderSystem>& render_system : render_systems) {
     for (const std::shared_ptr<Camera>& camera : render_system->cameras) {
-      ordered_cameras.push_back(std::make_pair(render_system, camera));
+      if (camera->render) {
+        ordered_cameras.push_back(std::make_pair(render_system, camera));
+      }
     }
   }
 
@@ -59,7 +61,17 @@ void RenderSuperSystem::LateUpdate(float delta_seconds) {
               return a.second->sort_order - b.second->sort_order;
             });
 
+  int width, height;
+  glfwGetWindowSize(window, &width, &height);
+
   for (const auto& [render_system, camera] : ordered_cameras) {
+    int x1 = (int)ceil(width * camera->viewport[0].x),
+        y1 = (int)ceil(height * camera->viewport[0].y),
+        x2 = (int)ceil(width * camera->viewport[1].x),
+        y2 = (int)ceil(height * camera->viewport[1].y);
+
+    glViewport(x1, y1, x2 - x1, y2 - y1);
+
     bool clear_depth = bool(camera->clear_flags & (Camera::ClearFlags::Depth));
     bool clear_colour =
         bool(camera->clear_flags & (Camera::ClearFlags::Colour));
