@@ -1,6 +1,9 @@
 
 #pragma once
 
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+
 #include <unordered_set>
 
 #include "nodes/camera.h"
@@ -33,6 +36,9 @@ class RenderSystem : public System {
 };
 
 class RenderSuperSystem : public SuperSystem {
+ public:
+  RenderSuperSystem(GLFWwindow* window_);
+
  protected:
   void LateUpdate(float delta_seconds) override;
 
@@ -44,4 +50,5 @@ class RenderSuperSystem : public SuperSystem {
 
  private:
   std::unordered_set<std::shared_ptr<RenderSystem>> render_systems;
+  GLFWwindow* window;
 };

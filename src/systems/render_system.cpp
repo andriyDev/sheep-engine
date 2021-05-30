@@ -40,6 +40,8 @@ void RenderSystem::NotifyOfNodeDetachment(
   }
 }
 
+RenderSuperSystem::RenderSuperSystem(GLFWwindow* window_) : window(window_) {}
+
 void RenderSuperSystem::LateUpdate(float delta_seconds) {
   std::vector<std::pair<std::shared_ptr<RenderSystem>, std::shared_ptr<Camera>>>
       ordered_cameras;
@@ -71,6 +73,7 @@ void RenderSuperSystem::LateUpdate(float delta_seconds) {
           render_system, pv);
     }
   }
+  glfwSwapBuffers(window);
 }
 
 void RenderSuperSystem::NotifyOfWorldDeletion(

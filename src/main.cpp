@@ -99,7 +99,7 @@ int main() {
   initResources();
 
   std::shared_ptr<Engine> engine(new Engine());
-  engine->AddSuperSystem(std::make_shared<RenderSuperSystem>());
+  engine->AddSuperSystem(std::make_shared<RenderSuperSystem>(window));
   std::shared_ptr<World> world = engine->CreateWorld();
   world->CreateEmptyRoot();
   world->AddSystem(std::make_shared<RenderSystem>());
@@ -153,7 +153,6 @@ int main() {
     engine->FixedUpdate(delta);
     engine->LateUpdate(delta);
 
-    glfwSwapBuffers(window);
     glfwPollEvents();
   }
 
