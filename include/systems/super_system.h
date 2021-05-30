@@ -3,7 +3,10 @@
 
 #include <memory>
 
+#include "systems/system.h"
+
 class Engine;
+class World;
 
 class SuperSystem : public std::enable_shared_from_this<SuperSystem> {
  public:
@@ -20,6 +23,21 @@ class SuperSystem : public std::enable_shared_from_this<SuperSystem> {
   // Performs an update every frame. Occurs at the end of a frame.
   // `delta_seconds` is the amount of time passed for this frame.
   virtual void LateUpdate(float delta_seconds) {}
+
+  // Notifies this super system that `world` has been created. Called after
+  // world has been created.
+  virtual void NotifyOfWorldCreation(const std::shared_ptr<World>& world) {}
+  // Notifies this super system that `world` has been created. Called before
+  // world has been removed.
+  virtual void NotifyOfWorldDeletion(const std::shared_ptr<World>& world) {}
+  // Notifies this super system that `system` has been added to `world`. Called
+  // after system has been added.
+  virtual void NotifyOfSystemAddition(const std::shared_ptr<World>& world,
+                                      const std::shared_ptr<System>& system) {}
+  // Notifies this super system that `system` has been removed from `world`.
+  // Called before system has been removed.
+  virtual void NotifyOfSystemRemoval(const std::shared_ptr<World>& world,
+                                     const std::shared_ptr<System>& system) {}
 
  private:
   std::weak_ptr<Engine> engine;

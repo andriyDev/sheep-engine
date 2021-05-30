@@ -33,4 +33,11 @@ class Engine : public std::enable_shared_from_this<Engine> {
  private:
   std::vector<std::shared_ptr<World>> worlds;
   std::vector<std::shared_ptr<SuperSystem>> super_systems;
+
+  void PropagateSystemAddition(const std::shared_ptr<World>& world,
+                               const std::shared_ptr<System>& system);
+  void PropagateSystemRemoval(const std::shared_ptr<World>& world,
+                              const std::shared_ptr<System>& system);
+
+  friend class World;
 };

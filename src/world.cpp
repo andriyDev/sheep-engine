@@ -3,6 +3,8 @@
 
 #include <assert.h>
 
+#include "engine.h"
+
 void World::SetRoot(const std::shared_ptr<Node>& new_root) {
   if (root) {
     PropagateNodeDetachment(root);
@@ -19,7 +21,8 @@ void World::SetRoot(const std::shared_ptr<Node>& new_root) {
 void World::AddSystem(const std::shared_ptr<System>& new_system, int index) {
   // Only allow adding `new_system` if it is not a part of some world.
   assert(!new_system->GetWorld().get());
-  new_system->world = this->shared_from_this();
+  const std::shared_ptr<World> this_ptr = this->shared_from_this();
+  new_system->world = this_ptr;
   if (index < 0) {
     index += systems.size() + 1;
     assert(index >= 0);
@@ -31,11 +34,15 @@ void World::AddSystem(const std::shared_ptr<System>& new_system, int index) {
   if (root) {
     new_system->NotifyOfNodeAttachment(root);
   }
+
+  GetEngine()->PropagateSystemAddition(this_ptr, new_system);
 }
 
 void World::RemoveSystem(const std::shared_ptr<System>& system) {
   const auto it = std::find(systems.begin(), systems.end(), system);
   if (it != systems.end()) {
+    GetEngine()->PropagateSystemRemoval(this->shared_from_this(), system);
+
     systems.erase(it);
   }
 }
