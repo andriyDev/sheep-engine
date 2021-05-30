@@ -11,11 +11,14 @@
 #include <sstream>
 #include <string>
 
+#include "engine.h"
 #include "mesh.h"
 #include "mesh_formats/obj_mesh.h"
+#include "nodes/mesh_renderer.h"
 #include "nodes/transform.h"
 #include "resource.h"
 #include "shader.h"
+#include "systems/render_system.h"
 #include "utility/cached.h"
 
 std::shared_ptr<Mesh> triangleMesh() {
@@ -65,14 +68,8 @@ void initResources() {
 
   ResourceLoader::Get().Add<ObjModel>("obj", {"test_mesh.obj"});
   ResourceLoader::Get().Add<Mesh>("obj_mesh", ObjModel::LoadMesh,
-                                  {"obj", "Cube"});
+                                  {"obj", "Blob"});
   ResourceLoader::Get().Add<RenderableMesh>("obj_rmesh", {"obj_mesh"});
-}
-
-std::shared_ptr<Transform> makeNamedTransform(const std::string& name) {
-  std::shared_ptr<Transform> node(new Transform());
-  node->name = name;
-  return node;
 }
 
 void glfw_error(int error, const char* description) {
@@ -101,89 +98,36 @@ int main() {
 
   initResources();
 
-  const std::shared_ptr<Transform> root = makeNamedTransform("root");
-  root->SetPosition(glm::vec3(1, 2, 3));
-  root->SetRotation(glm::angleAxis(45 * 3.14159f / 180.0f, glm::vec3(1, 0, 0)));
-  root->SetScale(glm::vec3(2, 2, 2));
-  printf("Root Position: %s\n", glm::to_string(root->GetMatrix()).c_str());
+  std::shared_ptr<Engine> engine(new Engine());
+  std::shared_ptr<World> world = engine->CreateWorld();
+  world->CreateEmptyRoot();
+  world->AddSystem(std::make_shared<RenderSystem>());
+
+  std::shared_ptr<Transform> camera_pivot;
+  std::shared_ptr<Camera> camera;
   {
-    const std::shared_ptr<Transform> branch1 = makeNamedTransform("branch1");
-    branch1->AttachTo(root);
-    branch1->SetGlobalPosition(glm::vec3(1, 0, 3));
-    root->SetRotation(
-        glm::angleAxis(45 * 3.14159f / 180.0f, glm::vec3(0, 1, 0)));
-    branch1->SetScale(glm::vec3(1, 2, 3));
-    printf("Branch1 Position: %s\n",
-           glm::to_string(branch1->GetGlobalPosition()).c_str());
-    printf("Lossy Scale: %s\n",
-           glm::to_string(branch1->GetLossyScale()).c_str());
-    {
-      const std::shared_ptr<Transform> leaf1 = makeNamedTransform("leaf1");
-      leaf1->AttachTo(branch1);
-      const std::shared_ptr<Transform> branch2 = makeNamedTransform("branch2");
-      branch2->AttachTo(branch1);
-      {
-        const std::shared_ptr<Transform> leaf2 = makeNamedTransform("leaf2");
-        leaf2->AttachTo(branch2);
-        const std::shared_ptr<Transform> leaf3 = makeNamedTransform("leaf3");
-        leaf3->AttachTo(branch2);
-      }
+    std::shared_ptr<MeshRenderer> mesh_renderer(new MeshRenderer());
+    mesh_renderer->AttachTo(world->GetRoot());
+
+    std::shared_ptr<Program> material =
+        ResourceLoader::Get().Load<Program>("main_program");
+    if (!material) {
+      return 1;
     }
-    const std::shared_ptr<Transform> leaf4 = makeNamedTransform("leaf4");
-    leaf4->AttachTo(root);
+    std::shared_ptr<RenderableMesh> mesh =
+        ResourceLoader::Get().Load<RenderableMesh>("obj_rmesh");
+    if (!mesh) {
+      return 1;
+    }
+    mesh_renderer->mesh = mesh;
+    mesh_renderer->material = material;
+
+    camera_pivot = std::shared_ptr<Transform>(new Transform());
+    camera = std::shared_ptr<Camera>(new Camera());
+    camera->SetPosition(glm::vec3(0, 0, 5));
+    camera->AttachTo(camera_pivot);
+    camera_pivot->AttachTo(world->GetRoot());
   }
-
-  const std::function<void(const std::shared_ptr<Node>&, int,
-                           std::stringstream&)>
-      print_node_tree = [&print_node_tree](const std::shared_ptr<Node>& node,
-                                           int indent,
-                                           std::stringstream& out_stream) {
-        for (int i = 0; i < indent; i++) {
-          out_stream << "  ";
-        }
-        if (node->GetChildren().size() == 0) {
-          out_stream << node->name << " {}" << std::endl;
-        } else {
-          out_stream << node->name << " {" << std::endl;
-          for (const std::shared_ptr<Node>& child : node->GetChildren()) {
-            print_node_tree(child, indent + 1, out_stream);
-          }
-          for (int i = 0; i < indent; i++) {
-            out_stream << "  ";
-          }
-          out_stream << "}" << std::endl;
-        }
-      };
-  std::stringstream ss;
-  print_node_tree(root, 0, ss);
-  printf("%s\n", ss.str().c_str());
-
-  int actual_value = 0;
-  Cached<int> test_cache([&actual_value]() {
-    printf("Compute\n");
-    return actual_value;
-  });
-  printf("Value: %d\n", *test_cache);
-  actual_value = 2;
-  printf("Value: %d\n", *test_cache);
-  test_cache.Invalidate();
-  printf("Invalidated\n");
-  printf("Value: %d\n", *test_cache);
-
-  return 0;
-
-  std::shared_ptr<Program> material =
-      ResourceLoader::Get().Load<Program>("main_program");
-  if (!material) {
-    return 1;
-  }
-  std::shared_ptr<RenderableMesh> mesh =
-      ResourceLoader::Get().Load<RenderableMesh>("obj_rmesh");
-  if (!mesh) {
-    return 1;
-  }
-
-  GLuint mvp_location = material->GetUniformLocation("MVP");
 
   glEnable(GL_CULL_FACE);
   glEnable(GL_DEPTH_TEST);
@@ -200,16 +144,15 @@ int main() {
 
     printf("Delta: %f\n", 1.0f / delta);
 
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    material->Use();
+    camera_pivot->SetRotation(
+        camera_pivot->GetRotation() *
+        glm::angleAxis(45 * 3.14159f / 180 * (float)delta, glm::vec3(0, 1, 0)));
+    printf("Global Position: %s\n",
+           glm::to_string(camera->GetGlobalPosition()).c_str());
 
-    glm::mat4 mvp =
-        glm::perspective(glm::radians(90.0f), 1280.f / 720.f, 0.1f, 100.f) *
-        glm::lookAt(glm::quat(glm::vec3(0, time, 0)) * glm::vec3(0, 2, 3),
-                    glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
-
-    glUniformMatrix4fv(mvp_location, 1, GL_FALSE, &mvp[0][0]);
-    mesh->Draw();
+    engine->Update(delta);
+    engine->FixedUpdate(delta);
+    engine->LateUpdate(delta);
 
     glfwSwapBuffers(window);
     glfwPollEvents();
