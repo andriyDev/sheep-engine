@@ -30,6 +30,9 @@ class Transform : public Node {
 
   std::shared_ptr<Transform> GetParentTransform() const;
 
+  static std::shared_ptr<Transform> GetFirstTransform(
+      const std::shared_ptr<Node>& leaf);
+
  protected:
   void AttachNode(const std::shared_ptr<Node>& child, int index) override;
   void DetachNode(const std::shared_ptr<Node>& child) override;

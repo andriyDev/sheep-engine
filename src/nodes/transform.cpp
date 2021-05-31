@@ -122,13 +122,18 @@ void Transform::SetGlobalRotation(const glm::quat& value) {
 }
 
 std::shared_ptr<Transform> Transform::GetParentTransform() const {
-  std::shared_ptr<Node> parent = GetParent();
-  while (parent) {
-    auto parent_as_transform = std::dynamic_pointer_cast<Transform>(parent);
-    if (parent_as_transform) {
-      return parent_as_transform;
+  return GetFirstTransform(GetParent());
+}
+
+std::shared_ptr<Transform> Transform::GetFirstTransform(
+    const std::shared_ptr<Node>& leaf) {
+  std::shared_ptr<Node> node = leaf;
+  while (node) {
+    auto node_as_transform = std::dynamic_pointer_cast<Transform>(node);
+    if (node_as_transform) {
+      return node_as_transform;
     } else {
-      parent = parent->GetParent();
+      node = node->GetParent();
     }
   }
   return nullptr;
