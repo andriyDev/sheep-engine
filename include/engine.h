@@ -29,6 +29,9 @@ class Engine : public std::enable_shared_from_this<Engine> {
   const std::vector<std::shared_ptr<World>>& GetWorlds() const;
   const std::vector<std::shared_ptr<SuperSystem>>& GetSuperSystems() const;
 
+  template <typename SystemType>
+  std::shared_ptr<SystemType> GetSuperSystem() const;
+
  private:
   std::vector<std::shared_ptr<World>> worlds;
   std::vector<std::shared_ptr<SuperSystem>> super_systems;
@@ -57,3 +60,16 @@ class Engine : public std::enable_shared_from_this<Engine> {
 
   friend class World;
 };
+
+// ===== Template Implementation ===== //
+
+template <typename SystemType>
+std::shared_ptr<SystemType> Engine::GetSuperSystem() const {
+  for (const std::shared_ptr<SuperSystem>& system : super_systems) {
+    const auto cast_system = std::dynamic_pointer_cast<SystemType>(system);
+    if (cast_system) {
+      return cast_system;
+    }
+  }
+  return nullptr;
+}
