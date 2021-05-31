@@ -16,6 +16,10 @@ void Engine::RemoveWorld(const std::shared_ptr<World>& world) {
   if (it != worlds.end()) {
     if (world->is_initialized) {
       for (const std::shared_ptr<SuperSystem>& super_system : super_systems) {
+        for (const std::shared_ptr<System>& system : world->GetSystems()) {
+          super_system->NotifyOfSystemRemoval(world, system);
+        }
+
         super_system->NotifyOfWorldDeletion(world);
       }
     }
@@ -37,6 +41,10 @@ void Engine::InitWorld(const std::shared_ptr<World>& world) {
 
   for (const std::shared_ptr<SuperSystem>& super_system : super_systems) {
     super_system->NotifyOfWorldInitialization(world);
+
+    for (const std::shared_ptr<System>& system : world->GetSystems()) {
+      super_system->NotifyOfSystemAddition(world, system);
+    }
   }
 }
 

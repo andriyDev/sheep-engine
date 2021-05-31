@@ -73,20 +73,6 @@ void RenderSuperSystem::LateUpdate(float delta_seconds) {
   glfwSwapBuffers(window);
 }
 
-void RenderSuperSystem::NotifyOfWorldInitialization(
-    const std::shared_ptr<World>& world) {
-  for (const std::shared_ptr<System>& system : world->GetSystems()) {
-    NotifyOfSystemAddition(world, system);
-  }
-}
-
-void RenderSuperSystem::NotifyOfWorldDeletion(
-    const std::shared_ptr<World>& world) {
-  for (const std::shared_ptr<System>& system : world->GetSystems()) {
-    NotifyOfSystemRemoval(world, system);
-  }
-}
-
 void RenderSuperSystem::NotifyOfSystemAddition(
     const std::shared_ptr<World>& world,
     const std::shared_ptr<System>& system) {
