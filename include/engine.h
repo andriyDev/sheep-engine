@@ -20,6 +20,10 @@ class Engine : public std::enable_shared_from_this<Engine> {
   // added to this engine.
   void RemoveSuperSystem(const std::shared_ptr<SuperSystem>& super_system);
 
+  // Performs initialization of the engine. Occurs only once at the start of the
+  // engine.
+  void Init();
+
   // Performs an update on all worlds every frame. Occurs at the start of a
   // frame. `delta_seconds` is the amount of time passed for this frame.
   void Update(float delta_seconds);
@@ -37,6 +41,8 @@ class Engine : public std::enable_shared_from_this<Engine> {
  private:
   std::vector<std::shared_ptr<World>> worlds;
   std::vector<std::shared_ptr<SuperSystem>> super_systems;
+
+  bool is_initialized = false;
 
   void PropagateSystemAddition(const std::shared_ptr<World>& world,
                                const std::shared_ptr<System>& system);

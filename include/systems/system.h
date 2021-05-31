@@ -12,6 +12,10 @@ class System : public std::enable_shared_from_this<System> {
   std::shared_ptr<World> GetWorld() const;
 
  protected:
+  // Performs initialization of the system. Occurs when World::Init has been
+  // called, or when added to a world after World::Init.
+  virtual void Init() {}
+
   // Handles `new_node` being attached to the node tree. This is called after
   // the node is attached. Systems are not notified of child nodes of
   // `new_node`.

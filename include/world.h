@@ -28,6 +28,10 @@ class World : public std::enable_shared_from_this<World> {
   const std::vector<std::shared_ptr<System>>& GetSystems() const;
 
  private:
+  // Performs initialization of the world. Occurs when Engine::Init has been
+  // called, or when created after Engine::Init.
+  void Init();
+
   // Performs an update on all systems every frame. Occurs at the start of a
   // frame. `delta_seconds` is the amount of time passed for this frame.
   void Update(float delta_seconds);
@@ -46,6 +50,8 @@ class World : public std::enable_shared_from_this<World> {
   std::vector<std::shared_ptr<System>> systems;
 
   std::weak_ptr<Engine> engine;
+
+  bool is_initialized = false;
 
   friend class Engine;
   friend class Node;

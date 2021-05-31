@@ -58,6 +58,19 @@ const std::vector<std::shared_ptr<SuperSystem>>& Engine::GetSuperSystems()
   return super_systems;
 }
 
+void Engine::Init() {
+  if (is_initialized) {
+    return;
+  }
+  is_initialized = true;
+  for (const std::shared_ptr<SuperSystem>& super_system : super_systems) {
+    super_system->Init();
+  }
+  for (const std::shared_ptr<World>& world : worlds) {
+    world->Init();
+  }
+}
+
 void Engine::Update(float delta_seconds) {
   for (const std::shared_ptr<World>& world : worlds) {
     world->Update(delta_seconds);

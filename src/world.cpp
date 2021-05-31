@@ -32,6 +32,10 @@ const std::shared_ptr<System>& World::AddSystem(
   }
   systems.insert(systems.begin() + index, new_system);
 
+  if (is_initialized) {
+    new_system->Init();
+  }
+
   if (root) {
     new_system->NotifyOfNodeAttachment(root);
   }
@@ -72,6 +76,16 @@ void World::PropagateNodeAttachment(const std::shared_ptr<Node>& node) {
 void World::PropagateNodeDetachment(const std::shared_ptr<Node>& node) {
   for (const std::shared_ptr<System>& system : systems) {
     system->NotifyOfNodeDetachment(node);
+  }
+}
+
+void World::Init() {
+  if (is_initialized) {
+    return;
+  }
+  is_initialized = true;
+  for (const std::shared_ptr<System>& system : systems) {
+    system->Init();
   }
 }
 

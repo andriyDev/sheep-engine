@@ -13,6 +13,11 @@ class SuperSystem : public std::enable_shared_from_this<SuperSystem> {
   std::shared_ptr<Engine> GetEngine() const;
 
  protected:
+  // Performs initialization of the super system. Occurs when Engine::Init has
+  // been called, or when added to the engine after Engine::Init. Occurs before
+  // any Systems have been initialized.
+  virtual void Init() {}
+
   // Performs an update every frame. Occurs at the start of a frame.
   // `delta_seconds` is the amount of time passed for this frame.
   virtual void Update(float delta_seconds) {}

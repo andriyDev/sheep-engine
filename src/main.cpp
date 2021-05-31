@@ -132,6 +132,8 @@ int main() {
     camera_pivot->AttachTo(world->GetRoot());
   }
 
+  engine->Init();
+
   glEnable(GL_CULL_FACE);
   glEnable(GL_DEPTH_TEST);
   glClearColor(0.f, 0.f, 0.4f, 0.f);
