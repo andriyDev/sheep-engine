@@ -27,6 +27,10 @@ class World : public std::enable_shared_from_this<World> {
   std::shared_ptr<Engine> GetEngine() const;
   const std::vector<std::shared_ptr<System>>& GetSystems() const;
 
+  // Returns the first system of type `SystemType`.
+  template <typename SystemType>
+  std::shared_ptr<SystemType> GetSystem();
+
  private:
   // Performs initialization of the world. Occurs when Engine::Init has been
   // called, or when created after Engine::Init.
@@ -56,3 +60,16 @@ class World : public std::enable_shared_from_this<World> {
   friend class Engine;
   friend class Node;
 };
+
+// ===== Template Implementation ===== //
+
+template <typename SystemType>
+std::shared_ptr<SystemType> World::GetSystem() {
+  for (const std::shared_ptr<System>& system : systems) {
+    const auto cast_system = std::dynamic_pointer_cast<SystemType>(system);
+    if (cast_system) {
+      return cast_system;
+    }
+  }
+  return nullptr;
+}

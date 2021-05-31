@@ -72,7 +72,7 @@ struct SystemTypeGroup : public TypeGroup<SystemType, System> {
   void RemoveSystem(const std::shared_ptr<System>& system);
 };
 
-// ===== Template implementation ===== //
+// ===== Template Implementation ===== //
 
 template <typename TargetType, typename SourceType>
 void TypeGroup<TargetType, SourceType>::Add(
