@@ -58,6 +58,24 @@ const std::vector<std::shared_ptr<SuperSystem>>& Engine::GetSuperSystems()
   return super_systems;
 }
 
+void Engine::Run(GLFWwindow* window) {
+  double previous_time = glfwGetTime();
+
+  while (!glfwWindowShouldClose(window)) {
+    double time = glfwGetTime();
+    double delta = time - previous_time;
+    previous_time = time;
+
+    printf("Delta: %f\n", 1.0f / delta);
+
+    Update(delta);
+    FixedUpdate(delta);
+    LateUpdate(delta);
+
+    glfwPollEvents();
+  }
+}
+
 void Engine::Init() {
   if (is_initialized) {
     return;

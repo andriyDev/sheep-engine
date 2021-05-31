@@ -132,33 +132,13 @@ int main() {
     camera_pivot->AttachTo(world->GetRoot());
   }
 
-  engine->Init();
-
   glEnable(GL_CULL_FACE);
   glEnable(GL_DEPTH_TEST);
   glClearColor(0.f, 0.f, 0.4f, 0.f);
 
   glfwSwapInterval(0);
 
-  double previous_time = glfwGetTime();
-
-  while (!glfwWindowShouldClose(window)) {
-    double time = glfwGetTime();
-    double delta = time - previous_time;
-    previous_time = time;
-
-    printf("Delta: %f\n", 1.0f / delta);
-
-    camera_pivot->SetRotation(
-        camera_pivot->GetRotation() *
-        glm::angleAxis(45 * 3.14159f / 180 * (float)delta, glm::vec3(0, 1, 0)));
-
-    engine->Update(delta);
-    engine->FixedUpdate(delta);
-    engine->LateUpdate(delta);
-
-    glfwPollEvents();
-  }
+  engine->Run(window);
 
   glfwDestroyWindow(window);
   glfwTerminate();
