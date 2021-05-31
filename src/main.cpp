@@ -80,7 +80,7 @@ class SpinSystem : public System {
     float degreesRatePerSecond = 45;
   };
 
-  void Update(float delta_seconds) override {
+  void FixedUpdate(float delta_seconds) override {
     for (const std::shared_ptr<SpinNode>& node : spin_nodes) {
       const std::shared_ptr<Transform> node_transform =
           Transform::GetFirstTransform(node->GetParent());
@@ -160,8 +160,6 @@ int main() {
     camera_pivot = std::shared_ptr<Transform>(new Transform());
     camera = std::shared_ptr<Camera>(new Camera());
     camera->SetPosition(glm::vec3(0, 0, 5));
-    camera->viewport[0] = glm::vec2(0, 0.5);
-    camera->viewport[1] = glm::vec2(0.5, 1);
     camera->AttachTo(camera_pivot);
     camera_pivot->AttachTo(world->GetRoot());
 

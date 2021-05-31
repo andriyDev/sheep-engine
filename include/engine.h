@@ -32,6 +32,9 @@ class Engine : public std::enable_shared_from_this<Engine> {
   template <typename SystemType>
   std::shared_ptr<SystemType> GetSuperSystem() const;
 
+  unsigned int max_fixed_updates_per_frame = 10;
+  float fixed_updates_per_second = 60;
+
  private:
   std::vector<std::shared_ptr<World>> worlds;
   std::vector<std::shared_ptr<SuperSystem>> super_systems;

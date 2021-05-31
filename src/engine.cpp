@@ -94,16 +94,29 @@ void Engine::Run(GLFWwindow* window) {
   Init();
 
   double previous_time = glfwGetTime();
+  double game_time_offset = 0;
 
   while (!glfwWindowShouldClose(window)) {
-    double time = glfwGetTime();
-    double delta = time - previous_time;
+    const double time = glfwGetTime();
+    const double delta = time - previous_time;
     previous_time = time;
 
     printf("Delta: %f\n", 1.0f / delta);
 
     Update(delta);
-    FixedUpdate(delta);
+
+    const double fixed_update_delta = 1.0 / fixed_updates_per_second;
+    game_time_offset += delta;
+    unsigned int desired_frames =
+        (unsigned int)(game_time_offset * fixed_updates_per_second);
+    game_time_offset -= desired_frames * fixed_update_delta;
+
+    // Ignore any frames passed `max_fixed_updates_per_frame`.
+    desired_frames = std::min(desired_frames, max_fixed_updates_per_frame);
+    for (int i = 0; i < desired_frames; i++) {
+      FixedUpdate(fixed_update_delta);
+    }
+
     LateUpdate(delta);
 
     glfwPollEvents();
