@@ -169,12 +169,6 @@ int main() {
         ->AttachTo(camera_pivot);
   }
 
-  glEnable(GL_CULL_FACE);
-  glEnable(GL_DEPTH_TEST);
-  glClearColor(0.f, 0.f, 0.4f, 0.f);
-
-  glfwSwapInterval(0);
-
   engine->Run(window);
 
   glfwDestroyWindow(window);
