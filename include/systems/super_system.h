@@ -29,11 +29,13 @@ class SuperSystem : public std::enable_shared_from_this<SuperSystem> {
   // `delta_seconds` is the amount of time passed for this frame.
   virtual void LateUpdate(float delta_seconds) {}
 
-  // Notifies this super system that `world` has been created. Called after
-  // world has been created.
-  virtual void NotifyOfWorldCreation(const std::shared_ptr<World>& world) {}
-  // Notifies this super system that `world` has been created. Called before
-  // world has been removed.
+  // Notifies this super system that `world` has been initialized. Called after
+  // world has been initialized.
+  virtual void NotifyOfWorldInitialization(
+      const std::shared_ptr<World>& world) {}
+  // Notifies this super system that `world` has been removed. Called before
+  // world has been removed. Is only called for worlds that have been
+  // initialized.
   virtual void NotifyOfWorldDeletion(const std::shared_ptr<World>& world) {}
   // Notifies this super system that `system` has been added to `world`. Called
   // after system has been added.

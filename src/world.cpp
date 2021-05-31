@@ -8,6 +8,7 @@
 void World::SetRoot(const std::shared_ptr<Node>& new_root) {
   if (root) {
     PropagateNodeDetachment(root);
+
     root->world = std::shared_ptr<World>();
   }
 
@@ -34,20 +35,21 @@ const std::shared_ptr<System>& World::AddSystem(
 
   if (is_initialized) {
     new_system->Init();
-  }
 
-  if (root) {
-    new_system->NotifyOfNodeAttachment(root);
+    if (root) {
+      new_system->NotifyOfNodeAttachment(root);
+    }
+    GetEngine()->PropagateSystemAddition(this_ptr, new_system);
   }
-
-  GetEngine()->PropagateSystemAddition(this_ptr, new_system);
   return new_system;
 }
 
 void World::RemoveSystem(const std::shared_ptr<System>& system) {
   const auto it = std::find(systems.begin(), systems.end(), system);
   if (it != systems.end()) {
-    GetEngine()->PropagateSystemRemoval(this->shared_from_this(), system);
+    if (is_initialized) {
+      GetEngine()->PropagateSystemRemoval(this->shared_from_this(), system);
+    }
 
     systems.erase(it);
   }
@@ -68,12 +70,18 @@ const std::vector<std::shared_ptr<System>>& World::GetSystems() const {
 }
 
 void World::PropagateNodeAttachment(const std::shared_ptr<Node>& node) {
+  if (!is_initialized) {
+    return;
+  }
   for (const std::shared_ptr<System>& system : systems) {
     system->NotifyOfNodeAttachment(node);
   }
 }
 
 void World::PropagateNodeDetachment(const std::shared_ptr<Node>& node) {
+  if (!is_initialized) {
+    return;
+  }
   for (const std::shared_ptr<System>& system : systems) {
     system->NotifyOfNodeDetachment(node);
   }
@@ -86,6 +94,10 @@ void World::Init() {
   is_initialized = true;
   for (const std::shared_ptr<System>& system : systems) {
     system->Init();
+
+    if (root) {
+      system->NotifyOfNodeAttachment(root);
+    }
   }
 }
 

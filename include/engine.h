@@ -14,6 +14,7 @@ class Engine : public std::enable_shared_from_this<Engine> {
  public:
   std::shared_ptr<World> CreateWorld();
   void RemoveWorld(const std::shared_ptr<World>& world);
+  void InitWorld(const std::shared_ptr<World>& world);
 
   // Adds `super_system` to this engine at `index`. If `index` is negative,
   // indexes from the end. Returns `super_system`.

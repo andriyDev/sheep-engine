@@ -43,6 +43,8 @@ class RenderSuperSystem : public SuperSystem {
  protected:
   void LateUpdate(float delta_seconds) override;
 
+  void NotifyOfWorldInitialization(
+      const std::shared_ptr<World>& world) override;
   void NotifyOfWorldDeletion(const std::shared_ptr<World>& world) override;
   void NotifyOfSystemAddition(const std::shared_ptr<World>& world,
                               const std::shared_ptr<System>& system) override;

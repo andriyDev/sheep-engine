@@ -8,21 +8,35 @@ std::shared_ptr<World> Engine::CreateWorld() {
   world->engine = this->shared_from_this();
   worlds.push_back(world);
 
-  for (const std::shared_ptr<SuperSystem>& super_system : super_systems) {
-    super_system->NotifyOfWorldCreation(world);
-  }
-
   return world;
 }
 
 void Engine::RemoveWorld(const std::shared_ptr<World>& world) {
   const auto it = std::find(worlds.begin(), worlds.end(), world);
   if (it != worlds.end()) {
-    for (const std::shared_ptr<SuperSystem>& super_system : super_systems) {
-      super_system->NotifyOfWorldDeletion(world);
+    if (world->is_initialized) {
+      for (const std::shared_ptr<SuperSystem>& super_system : super_systems) {
+        super_system->NotifyOfWorldDeletion(world);
+      }
     }
 
     worlds.erase(it);
+  }
+}
+
+void Engine::InitWorld(const std::shared_ptr<World>& world) {
+  assert(world.get());
+  assert(world->GetEngine().get() == this);
+  assert(is_initialized);
+
+  if (world->is_initialized) {
+    return;
+  }
+
+  world->Init();
+
+  for (const std::shared_ptr<SuperSystem>& super_system : super_systems) {
+    super_system->NotifyOfWorldInitialization(world);
   }
 }
 
@@ -38,6 +52,16 @@ const std::shared_ptr<SuperSystem>& Engine::AddSuperSystem(
     assert(index < super_systems.size());
   }
   super_systems.insert(super_systems.begin() + index, super_system);
+
+  if (is_initialized) {
+    super_system->Init();
+
+    for (const std::shared_ptr<World>& world : worlds) {
+      if (world->is_initialized) {
+        super_system->NotifyOfWorldInitialization(world);
+      }
+    }
+  }
   return super_system;
 }
 
@@ -59,6 +83,8 @@ const std::vector<std::shared_ptr<SuperSystem>>& Engine::GetSuperSystems()
 }
 
 void Engine::Run(GLFWwindow* window) {
+  Init();
+
   double previous_time = glfwGetTime();
 
   while (!glfwWindowShouldClose(window)) {
@@ -85,13 +111,15 @@ void Engine::Init() {
     super_system->Init();
   }
   for (const std::shared_ptr<World>& world : worlds) {
-    world->Init();
+    InitWorld(world);
   }
 }
 
 void Engine::Update(float delta_seconds) {
   for (const std::shared_ptr<World>& world : worlds) {
-    world->Update(delta_seconds);
+    if (world->is_initialized) {
+      world->Update(delta_seconds);
+    }
   }
   for (const std::shared_ptr<SuperSystem>& super_system : super_systems) {
     super_system->Update(delta_seconds);
@@ -100,7 +128,9 @@ void Engine::Update(float delta_seconds) {
 
 void Engine::FixedUpdate(float delta_seconds) {
   for (const std::shared_ptr<World>& world : worlds) {
-    world->FixedUpdate(delta_seconds);
+    if (world->is_initialized) {
+      world->FixedUpdate(delta_seconds);
+    }
   }
   for (const std::shared_ptr<SuperSystem>& super_system : super_systems) {
     super_system->FixedUpdate(delta_seconds);
@@ -109,7 +139,9 @@ void Engine::FixedUpdate(float delta_seconds) {
 
 void Engine::LateUpdate(float delta_seconds) {
   for (const std::shared_ptr<World>& world : worlds) {
-    world->LateUpdate(delta_seconds);
+    if (world->is_initialized) {
+      world->LateUpdate(delta_seconds);
+    }
   }
   for (const std::shared_ptr<SuperSystem>& super_system : super_systems) {
     super_system->LateUpdate(delta_seconds);
