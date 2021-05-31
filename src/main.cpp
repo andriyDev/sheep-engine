@@ -72,6 +72,40 @@ void initResources() {
   ResourceLoader::Get().Add<RenderableMesh>("obj_rmesh", {"obj_mesh"});
 }
 
+class SpinSystem : public System {
+ public:
+  // Spins the parent node.
+  class SpinNode : public Node {
+   public:
+    float degreesRatePerSecond = 45;
+  };
+
+  void Update(float delta_seconds) override {
+    for (const std::shared_ptr<SpinNode>& node : spin_nodes) {
+      const std::shared_ptr<Transform> node_transform =
+          Transform::GetFirstTransform(node->GetParent());
+      if (!node_transform) {
+        continue;
+      }
+      node_transform->SetRotation(
+          node_transform->GetRotation() *
+          glm::angleAxis(
+              node->degreesRatePerSecond * 3.14159f / 180 * delta_seconds,
+              glm::vec3(0, 1, 0)));
+    }
+  }
+
+  void NotifyOfNodeAttachment(const std::shared_ptr<Node>& root) override {
+    spin_nodes.AddTree(root);
+  }
+  void NotifyOfNodeDetachment(const std::shared_ptr<Node>& root) override {
+    spin_nodes.RemoveTree(root);
+  }
+
+ private:
+  NodeTypeGroup<SpinNode> spin_nodes;
+};
+
 void glfw_error(int error, const char* description) {
   fprintf(stderr, "GLFW Error: %s\n", description);
 }
@@ -102,6 +136,7 @@ int main() {
   engine->AddSuperSystem(std::make_shared<RenderSuperSystem>(window));
   std::shared_ptr<World> world = engine->CreateWorld();
   world->CreateEmptyRoot();
+  world->AddSystem(std::make_shared<SpinSystem>());
   world->AddSystem(std::make_shared<RenderSystem>());
 
   std::shared_ptr<Transform> camera_pivot;
@@ -130,6 +165,9 @@ int main() {
     camera->viewport[1] = glm::vec2(0.5, 1);
     camera->AttachTo(camera_pivot);
     camera_pivot->AttachTo(world->GetRoot());
+
+    std::shared_ptr<SpinSystem::SpinNode>(new SpinSystem::SpinNode())
+        ->AttachTo(camera_pivot);
   }
 
   glEnable(GL_CULL_FACE);
