@@ -137,7 +137,6 @@ int main() {
   std::shared_ptr<World> world = engine->CreateWorld();
   world->CreateEmptyRoot();
   world->AddSystem(std::make_shared<SpinSystem>());
-  world->AddSystem(std::make_shared<RenderSystem>());
 
   std::shared_ptr<Transform> camera_pivot;
   std::shared_ptr<Camera> camera;

@@ -40,9 +40,23 @@ class RenderSuperSystem : public SuperSystem {
  public:
   RenderSuperSystem(GLFWwindow* window_);
 
+  enum class RenderSystemAddition {
+    None,        // RenderSystems must be manually attached to all worlds.
+    InitWorlds,  // RenderSystems will only be added to worlds present on
+                 // initialization.
+    AllWorlds,   // RenderSystems will be added to all worlds as they are
+                 // initialized.
+  };
+
+  RenderSystemAddition addition_mode = RenderSystemAddition::AllWorlds;
+
  protected:
+  void Init() override;
+
   void LateUpdate(float delta_seconds) override;
 
+  void NotifyOfWorldInitialization(
+      const std::shared_ptr<World>& world) override;
   void NotifyOfSystemAddition(const std::shared_ptr<World>& world,
                               const std::shared_ptr<System>& system) override;
   void NotifyOfSystemRemoval(const std::shared_ptr<World>& world,
