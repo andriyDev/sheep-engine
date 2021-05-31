@@ -29,7 +29,9 @@ RenderSuperSystem::RenderSuperSystem(GLFWwindow* window_) : window(window_) {}
 void RenderSuperSystem::Init() {
   if (addition_mode == RenderSystemAddition::InitWorlds) {
     for (const std::shared_ptr<World>& world : GetEngine()->GetWorlds()) {
-      world->AddSystem(std::shared_ptr<RenderSystem>(new RenderSystem()));
+      if (!world->GetSystem<RenderSystem>()) {
+        world->AddSystem(std::shared_ptr<RenderSystem>(new RenderSystem()));
+      }
     }
   }
 }
@@ -84,7 +86,9 @@ void RenderSuperSystem::LateUpdate(float delta_seconds) {
 void RenderSuperSystem::NotifyOfWorldInitialization(
     const std::shared_ptr<World>& world) {
   if (addition_mode == RenderSystemAddition::AllWorlds) {
-    world->AddSystem(std::shared_ptr<RenderSystem>(new RenderSystem()));
+    if (!world->GetSystem<RenderSystem>()) {
+      world->AddSystem(std::shared_ptr<RenderSystem>(new RenderSystem()));
+    }
   }
 }
 
