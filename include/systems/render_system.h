@@ -10,6 +10,7 @@
 #include "nodes/node.h"
 #include "systems/super_system.h"
 #include "systems/system.h"
+#include "utility/type_group.h"
 
 class RenderSystem;
 class RenderSuperSystem;
@@ -29,8 +30,8 @@ class RenderSystem : public System {
   void NotifyOfNodeDetachment(const std::shared_ptr<Node>& new_node) override;
 
  private:
-  std::unordered_set<std::shared_ptr<Renderable>> renderables;
-  std::unordered_set<std::shared_ptr<Camera>> cameras;
+  NodeTypeGroup<Renderable> renderables;
+  NodeTypeGroup<Camera> cameras;
 
   friend class RenderSuperSystem;
 };
@@ -49,6 +50,6 @@ class RenderSuperSystem : public SuperSystem {
                              const std::shared_ptr<System>& system) override;
 
  private:
-  std::unordered_set<std::shared_ptr<RenderSystem>> render_systems;
+  SystemTypeGroup<RenderSystem> render_systems;
   GLFWwindow* window;
 };

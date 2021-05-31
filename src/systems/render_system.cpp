@@ -12,32 +12,16 @@ void RenderSystem::NotifyOfNodeAttachment(
     const std::shared_ptr<Node>& new_node) {
   const std::vector<std::shared_ptr<Node>> nodes =
       CollectPreOrderNodes(new_node);
-  for (const std::shared_ptr<Node>& node : nodes) {
-    const auto renderable = std::dynamic_pointer_cast<Renderable>(node);
-    if (renderable) {
-      renderables.insert(renderable);
-    }
-    const auto camera = std::dynamic_pointer_cast<Camera>(node);
-    if (camera) {
-      cameras.insert(camera);
-    }
-  }
+  renderables.Add(nodes);
+  cameras.Add(nodes);
 }
 
 void RenderSystem::NotifyOfNodeDetachment(
     const std::shared_ptr<Node>& new_node) {
   const std::vector<std::shared_ptr<Node>> nodes =
       CollectPreOrderNodes(new_node);
-  for (const std::shared_ptr<Node>& node : nodes) {
-    const auto renderable = std::dynamic_pointer_cast<Renderable>(node);
-    if (renderable) {
-      renderables.erase(renderable);
-    }
-    const auto camera = std::dynamic_pointer_cast<Camera>(node);
-    if (camera) {
-      cameras.erase(camera);
-    }
-  }
+  renderables.Remove(nodes);
+  cameras.Remove(nodes);
 }
 
 RenderSuperSystem::RenderSuperSystem(GLFWwindow* window_) : window(window_) {}
@@ -99,21 +83,11 @@ void RenderSuperSystem::NotifyOfWorldDeletion(
 void RenderSuperSystem::NotifyOfSystemAddition(
     const std::shared_ptr<World>& world,
     const std::shared_ptr<System>& system) {
-  const std::shared_ptr<RenderSystem> render_system =
-      std::dynamic_pointer_cast<RenderSystem>(system);
-  if (!render_system) {
-    return;
-  }
-  render_systems.insert(render_system);
+  render_systems.AddSystem(system);
 }
 
 void RenderSuperSystem::NotifyOfSystemRemoval(
     const std::shared_ptr<World>& world,
     const std::shared_ptr<System>& system) {
-  const std::shared_ptr<RenderSystem> render_system =
-      std::dynamic_pointer_cast<RenderSystem>(system);
-  if (!render_system) {
-    return;
-  }
-  render_systems.erase(render_system);
+  render_systems.AddSystem(system);
 }
