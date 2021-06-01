@@ -24,6 +24,10 @@ class Engine : public std::enable_shared_from_this<Engine> {
   // added to this engine.
   void RemoveSuperSystem(const std::shared_ptr<SuperSystem>& super_system);
 
+  // Begins to quit the engine. This does not terminate the program immediately,
+  // it only makes this the last frame that will be run.
+  void Quit();
+
   void Run(GLFWwindow* window);
 
   const std::vector<std::shared_ptr<World>>& GetWorlds() const;
@@ -40,6 +44,7 @@ class Engine : public std::enable_shared_from_this<Engine> {
   std::vector<std::shared_ptr<SuperSystem>> super_systems;
 
   bool is_initialized = false;
+  bool is_running = false;
 
   // Performs initialization of the engine. Occurs only once at the start of the
   // engine.

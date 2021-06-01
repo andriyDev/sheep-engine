@@ -90,18 +90,20 @@ const std::vector<std::shared_ptr<SuperSystem>>& Engine::GetSuperSystems()
   return super_systems;
 }
 
+void Engine::Quit() { is_running = false; }
+
 void Engine::Run(GLFWwindow* window) {
   Init();
 
   double previous_time = glfwGetTime();
   double game_time_offset = 0;
 
-  while (!glfwWindowShouldClose(window)) {
+  while (is_running && !glfwWindowShouldClose(window)) {
     const double time = glfwGetTime();
     const double delta = time - previous_time;
     previous_time = time;
 
-    // printf("Delta: %f\n", 1.0f / delta);
+    printf("Delta: %f\n", 1.0f / delta);
 
     Update(delta);
 
@@ -128,6 +130,7 @@ void Engine::Init() {
     return;
   }
   is_initialized = true;
+  is_running = true;
   for (const std::shared_ptr<SuperSystem>& super_system : super_systems) {
     super_system->Init();
   }
