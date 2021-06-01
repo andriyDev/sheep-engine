@@ -6,7 +6,7 @@
 glm::mat4 Camera::GetProjectionMatrix(float aspect) const {
   switch (projection_type) {
     case Projection::Perspective:
-      return glm::perspective(fov, aspect, near, far);
+      return glm::perspective(fov * 3.14159f / 180.f, aspect, near, far);
     case Projection::Orthographic:
       return glm::ortho(-0.5 * size * aspect, 0.5 * size * aspect, 0.5 * size,
                         -0.5 * size);
