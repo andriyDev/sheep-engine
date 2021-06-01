@@ -113,6 +113,15 @@ class PlayerControlSystem : public System {
   void Update(float delta_seconds) override {
     std::shared_ptr<InputSuperSystem> input_system = input_system_weak.lock();
 
+    if (input_system->IsButtonPressed("player/quit")) {
+      GetEngine()->Quit();
+      return;
+    }
+
+    if (input_system->IsButtonPressed("player/toggle-mouse-lock")) {
+      input_system->SetMouseLock(!input_system->IsMouseLocked());
+    }
+
     glm::vec2 move(input_system->GetAxisValue("player/move/horizontal"),
                    input_system->GetAxisValue("player/move/vertical"));
     glm::vec3 look(-input_system->GetAxisValue("player/look/horizontal"),
@@ -180,6 +189,12 @@ int main() {
   {
     auto input_system = std::static_pointer_cast<InputSuperSystem>(
         engine->AddSuperSystem(std::make_shared<InputSuperSystem>(window)));
+    input_system->CreateButton(
+        "player/toggle-mouse-lock",
+        {InputSuperSystem::ButtonDefinition::Key(GLFW_KEY_ESCAPE, 0)});
+    input_system->CreateButton("player/quit",
+                               {InputSuperSystem::ButtonDefinition::Key(
+                                   GLFW_KEY_ESCAPE, GLFW_MOD_SHIFT)});
     input_system->CreateAxis(
         "player/move/horizontal",
         {InputSuperSystem::AxisDefinition::Key(GLFW_KEY_D, 1.f),

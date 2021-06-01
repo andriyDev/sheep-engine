@@ -435,10 +435,8 @@ void InputSuperSystem::KeyCallback(GLFWwindow* window, int key, int scancode,
       static_cast<InputSuperSystem*>(glfwGetWindowUserPointer(window));
   KeyWatch* watch = input->GetWatch(key, mods);
   if (!watch) {
-    printf("No watch found: %d/%d\n", key, mods);
     return;
   }
-  printf("Found watch: %d/%d\n", key, mods);
   if (action == GLFW_PRESS) {
     watch->is_pressed = true;
     watch->is_down = true;
