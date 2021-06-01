@@ -18,6 +18,7 @@
 #include "nodes/transform.h"
 #include "resource.h"
 #include "shader.h"
+#include "systems/input_system.h"
 #include "systems/render_system.h"
 #include "utility/cached.h"
 
@@ -72,38 +73,78 @@ void initResources() {
   ResourceLoader::Get().Add<RenderableMesh>("obj_rmesh", {"obj_mesh"});
 }
 
-class SpinSystem : public System {
+glm::vec3 ToEuler(glm::quat q) {
+  glm::vec3 f = q * glm::vec3(0, 0, -1);
+  glm::vec3 r = q * glm::vec3(1, 0, 0);
+  float pitch = asin(f.y);
+  f.y = 0;
+  f = glm::normalize(f);
+  float yaw = atan2f(-f.x, -f.z);
+  glm::vec3 p(-f.z, 0, f.x);
+  // float roll = acos(glm::dot(r, p)) * (float(signbit(r.y)) * 2 - 1);
+  return glm::vec3(yaw, pitch, 0) * 180.f / 3.14159f;
+}
+
+glm::quat FromEuler(glm::vec3 e) {
+  e *= 3.14159f / 180.f;
+  return glm::angleAxis(e.x, glm::vec3(0, 1, 0)) *
+         glm::angleAxis(e.y, glm::vec3(1, 0, 0)) *
+         glm::angleAxis(e.z, glm::vec3(0, 0, -1));
+}
+
+float clamp(float value, float m, float M) {
+  return std::max(std::min(value, M), m);
+}
+
+class PlayerControlSystem : public System {
  public:
-  // Spins the parent node.
-  class SpinNode : public Node {
+  // Moves around the parent node based on player input.
+  class PlayerNode : public Node {
    public:
-    float degreesRatePerSecond = 45;
+    float look_sensitivity = 0.1f;
+    float move_speed = 1.f;
   };
 
-  void FixedUpdate(float delta_seconds) override {
-    for (const std::shared_ptr<SpinNode>& node : spin_nodes) {
+  void Init() override {
+    input_system_weak = GetEngine()->GetSuperSystem<InputSuperSystem>();
+  }
+
+  void Update(float delta_seconds) override {
+    std::shared_ptr<InputSuperSystem> input_system = input_system_weak.lock();
+    glm::vec2 move(input_system->GetAxisValue("player/move/horizontal"),
+                   input_system->GetAxisValue("player/move/vertical"));
+    glm::vec3 look(-input_system->GetAxisValue("player/look/horizontal"),
+                   -input_system->GetAxisValue("player/look/vertical"),
+                   input_system->GetAxisValue("player/look/roll"));
+    for (const std::shared_ptr<PlayerNode>& node : player_nodes) {
       const std::shared_ptr<Transform> node_transform =
           Transform::GetFirstTransform(node->GetParent());
       if (!node_transform) {
         continue;
       }
-      node_transform->SetRotation(
-          node_transform->GetRotation() *
-          glm::angleAxis(
-              node->degreesRatePerSecond * 3.14159f / 180 * delta_seconds,
-              glm::vec3(0, 1, 0)));
+      glm::vec3 euler = ToEuler(node_transform->GetRotation());
+      euler.x += look.x * node->look_sensitivity;
+      euler.y = clamp(euler.y + look.y * node->look_sensitivity, -89, 89);
+      euler.z += look.z * delta_seconds;
+      node_transform->SetRotation(FromEuler(euler));
+      // printf("Euler: %s\n", glm::to_string(euler).c_str());
+      glm::vec3 forward = node_transform->GetRotation() * glm::vec3(0, 0, -1);
+      glm::vec3 right = node_transform->GetRotation() * glm::vec3(1, 0, 0);
+      node_transform->SetPosition(node_transform->GetPosition() +
+                                  forward * move.y + right * move.x);
     }
   }
 
   void NotifyOfNodeAttachment(const std::shared_ptr<Node>& root) override {
-    spin_nodes.AddTree(root);
+    player_nodes.AddTree(root);
   }
   void NotifyOfNodeDetachment(const std::shared_ptr<Node>& root) override {
-    spin_nodes.RemoveTree(root);
+    player_nodes.RemoveTree(root);
   }
 
  private:
-  NodeTypeGroup<SpinNode> spin_nodes;
+  std::weak_ptr<InputSuperSystem> input_system_weak;
+  NodeTypeGroup<PlayerNode> player_nodes;
 };
 
 void glfw_error(int error, const char* description) {
@@ -134,9 +175,33 @@ int main() {
 
   std::shared_ptr<Engine> engine(new Engine());
   engine->AddSuperSystem(std::make_shared<RenderSuperSystem>(window));
+  {
+    auto input_system = std::static_pointer_cast<InputSuperSystem>(
+        engine->AddSuperSystem(std::make_shared<InputSuperSystem>(window)));
+    input_system->CreateAxis(
+        "player/move/horizontal",
+        {InputSuperSystem::AxisDefinition::Key(GLFW_KEY_D, 1.f),
+         InputSuperSystem::AxisDefinition::Key(GLFW_KEY_A, -1.f)});
+    input_system->CreateAxis(
+        "player/move/vertical",
+        {InputSuperSystem::AxisDefinition::Key(GLFW_KEY_W, 1.f),
+         InputSuperSystem::AxisDefinition::Key(GLFW_KEY_S, -1.f)});
+    input_system->CreateAxis(
+        "player/look/horizontal",
+        {InputSuperSystem::AxisDefinition::MouseMove(
+            InputSuperSystem::AxisDefinition::Direction::Horizontal, 1.f)});
+    input_system->CreateAxis(
+        "player/look/vertical",
+        {InputSuperSystem::AxisDefinition::MouseMove(
+            InputSuperSystem::AxisDefinition::Direction::Vertical, 1.f)});
+    input_system->CreateAxis(
+        "player/look/roll",
+        {InputSuperSystem::AxisDefinition::Key(GLFW_KEY_E, 1.f),
+         InputSuperSystem::AxisDefinition::Key(GLFW_KEY_Q, -1.f)});
+  }
   std::shared_ptr<World> world = engine->CreateWorld();
   world->CreateEmptyRoot();
-  world->AddSystem(std::make_shared<SpinSystem>());
+  world->AddSystem(std::make_shared<PlayerControlSystem>());
 
   std::shared_ptr<Transform> camera_pivot;
   std::shared_ptr<Camera> camera;
@@ -163,8 +228,9 @@ int main() {
     camera->AttachTo(camera_pivot);
     camera_pivot->AttachTo(world->GetRoot());
 
-    std::shared_ptr<SpinSystem::SpinNode>(new SpinSystem::SpinNode())
-        ->AttachTo(camera_pivot);
+    std::shared_ptr<PlayerControlSystem::PlayerNode>(
+        new PlayerControlSystem::PlayerNode())
+        ->AttachTo(camera);
   }
 
   engine->Run(window);

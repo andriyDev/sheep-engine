@@ -19,6 +19,7 @@ executable('sheep', [
   'src/nodes/utility.cpp',
   'src/resource.cpp',
   'src/shader.cpp',
+  'src/systems/input_system.cpp',
   'src/systems/render_system.cpp',
   'src/systems/super_system.cpp',
   'src/systems/system.cpp',

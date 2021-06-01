@@ -30,7 +30,7 @@ void RenderSuperSystem::Init() {
   glEnable(GL_CULL_FACE);
   glEnable(GL_DEPTH_TEST);
   glClearColor(0.f, 0.f, 0.4f, 0.f);
-  glfwSwapInterval(0);
+  // glfwSwapInterval(0);
 
   if (addition_mode == RenderSystemAddition::InitWorlds) {
     for (const std::shared_ptr<World>& world : GetEngine()->GetWorlds()) {
