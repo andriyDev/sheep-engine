@@ -26,6 +26,9 @@ class InputSuperSystem : public SuperSystem {
                                         int modifiers);
   };
 
+  // Sets whether the mouse is locked or not by `lock`.
+  void SetMouseLock(bool lock);
+
   // Creates (or updates) a button with `name` using `definitions`. If `name`
   // already exists, `definitions` will replace the existing definitions.
   void CreateButton(const std::string& name,

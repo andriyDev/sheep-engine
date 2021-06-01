@@ -107,10 +107,12 @@ class PlayerControlSystem : public System {
 
   void Init() override {
     input_system_weak = GetEngine()->GetSuperSystem<InputSuperSystem>();
+    input_system_weak.lock()->SetMouseLock(true);
   }
 
   void Update(float delta_seconds) override {
     std::shared_ptr<InputSuperSystem> input_system = input_system_weak.lock();
+
     glm::vec2 move(input_system->GetAxisValue("player/move/horizontal"),
                    input_system->GetAxisValue("player/move/vertical"));
     glm::vec3 look(-input_system->GetAxisValue("player/look/horizontal"),

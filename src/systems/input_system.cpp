@@ -7,6 +7,11 @@
 
 InputSuperSystem::InputSuperSystem(GLFWwindow* window_) : window(window_) {}
 
+void InputSuperSystem::SetMouseLock(bool lock) {
+  glfwSetInputMode(window, GLFW_CURSOR,
+                   lock ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+}
+
 InputSuperSystem::ButtonDefinition InputSuperSystem::ButtonDefinition::Key(
     unsigned int key, int modifiers) {
   ButtonDefinition definition;
