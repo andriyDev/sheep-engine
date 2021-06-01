@@ -24,6 +24,7 @@ const std::shared_ptr<System>& World::AddSystem(
   // Only allow adding `new_system` if it is not a part of some world.
   assert(!new_system->GetWorld().get());
   const std::shared_ptr<World> this_ptr = this->shared_from_this();
+  new_system->engine = GetEngine();
   new_system->world = this_ptr;
   if (index < 0) {
     index += systems.size() + 1;
@@ -51,6 +52,8 @@ void World::RemoveSystem(const std::shared_ptr<System>& system) {
       GetEngine()->PropagateSystemRemoval(this->shared_from_this(), system);
     }
 
+    system->engine = std::shared_ptr<Engine>();
+    system->world = std::shared_ptr<World>();
     systems.erase(it);
   }
 }

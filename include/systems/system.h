@@ -5,11 +5,13 @@
 
 #include "nodes/node.h"
 
+class Engine;
 class World;
 
 class System : public std::enable_shared_from_this<System> {
  public:
   std::shared_ptr<World> GetWorld() const;
+  std::shared_ptr<Engine> GetEngine() const;
 
  protected:
   // Performs initialization of the system. Occurs when World::Init has been
@@ -37,6 +39,7 @@ class System : public std::enable_shared_from_this<System> {
   virtual void LateUpdate(float delta_seconds) {}
 
  private:
+  std::weak_ptr<Engine> engine;
   std::weak_ptr<World> world;
 
   friend class World;
