@@ -28,6 +28,8 @@ class InputSuperSystem : public SuperSystem {
 
   // Sets whether the mouse is locked or not by `lock`.
   void SetMouseLock(bool lock);
+  // Gets whether the mouse is currently locked.
+  bool IsMouseLocked() const;
 
   // Creates (or updates) a button with `name` using `definitions`. If `name`
   // already exists, `definitions` will replace the existing definitions.

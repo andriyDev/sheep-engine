@@ -12,6 +12,10 @@ void InputSuperSystem::SetMouseLock(bool lock) {
                    lock ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
 }
 
+bool InputSuperSystem::IsMouseLocked() const {
+  return glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
+}
+
 InputSuperSystem::ButtonDefinition InputSuperSystem::ButtonDefinition::Key(
     unsigned int key, int modifiers) {
   ButtonDefinition definition;
