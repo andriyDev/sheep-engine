@@ -1,11 +1,15 @@
 
 project('sheep', 'cpp', default_options: ['cpp_std=c++17'])
 
-inc = include_directories('include/')
-
+absl_dep = dependency('absl', modules: [
+  'absl::flat_hash_map',
+  'absl::flat_hash_set',
+])
 glfw_dep = dependency('glfw3')
 gl_dep = dependency('gl')
 glew_dep = dependency('glew')
+
+inc = include_directories('include/')
 
 executable('sheep', [
   'src/engine.cpp',
@@ -24,4 +28,9 @@ executable('sheep', [
   'src/systems/super_system.cpp',
   'src/systems/system.cpp',
   'src/world.cpp'
-], dependencies: [ glfw_dep, gl_dep, glew_dep ], include_directories: inc)
+], dependencies: [
+  glfw_dep,
+  gl_dep,
+  glew_dep,
+  absl_dep
+], include_directories: inc)

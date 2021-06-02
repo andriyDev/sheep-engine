@@ -4,8 +4,6 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-#include <unordered_set>
-
 #include "nodes/camera.h"
 #include "nodes/node.h"
 #include "systems/super_system.h"

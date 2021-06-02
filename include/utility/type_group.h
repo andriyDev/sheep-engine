@@ -1,8 +1,9 @@
 
 #pragma once
 
+#include <absl/container/flat_hash_set.h>
+
 #include <memory>
-#include <unordered_set>
 
 #include "nodes/node.h"
 #include "nodes/utility.h"
@@ -12,7 +13,7 @@ template <typename TargetType, typename SourceType>
 struct TypeGroup {
  public:
   using ContainerType =
-      typename std::unordered_set<std::shared_ptr<TargetType>>;
+      typename absl::flat_hash_set<std::shared_ptr<TargetType>>;
 
   // Adds several `elements` to this group.
   void Add(const std::vector<std::shared_ptr<SourceType>>& elements);
@@ -20,10 +21,12 @@ struct TypeGroup {
   // Removes several `elements` from this group.
   void Remove(const std::vector<std::shared_ptr<SourceType>>& elements);
 
-  typename ContainerType::iterator begin() const {
+  typename ContainerType::const_iterator begin() const {
     return cast_elements.begin();
   }
-  typename ContainerType::iterator end() const { return cast_elements.end(); }
+  typename ContainerType::const_iterator end() const {
+    return cast_elements.end();
+  }
 
   typename ContainerType::const_iterator cbegin() const {
     return cast_elements.cbegin();

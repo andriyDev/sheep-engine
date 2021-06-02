@@ -3,9 +3,9 @@
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <absl/container/flat_hash_map.h>
 
 #include <glm/glm.hpp>
-#include <unordered_map>
 
 #include "systems/super_system.h"
 
@@ -113,16 +113,16 @@ class InputSuperSystem : public SuperSystem {
   struct Button {
     std::vector<std::pair<unsigned int, int>> keys_with_modifier;
   };
-  std::unordered_map<std::string, Button> buttons;
+  absl::flat_hash_map<std::string, Button> buttons;
 
   struct Axis {
     std::vector<std::pair<unsigned int, float>> key_weights;
     glm::vec2 mouse_move_weights = glm::vec2(0, 0);
     glm::vec2 scroll_weights = glm::vec2(0, 0);
   };
-  std::unordered_map<std::string, Axis> axes;
+  absl::flat_hash_map<std::string, Axis> axes;
 
-  std::unordered_map<unsigned int, std::vector<KeyWatch>> key_watches;
+  absl::flat_hash_map<unsigned int, std::vector<KeyWatch>> key_watches;
 
   static void KeyCallback(GLFWwindow* window, int key, int scancode, int action,
                           int mods);

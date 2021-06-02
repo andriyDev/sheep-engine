@@ -1,9 +1,10 @@
 
 #pragma once
 
+#include <absl/container/flat_hash_map.h>
+
 #include <memory>
 #include <string>
-#include <unordered_map>
 
 #include "mesh.h"
 
@@ -21,5 +22,5 @@ struct ObjModel {
   };
   static std::shared_ptr<Mesh> LoadMesh(const MeshDetails& details);
 
-  std::unordered_map<std::string, std::shared_ptr<Mesh>> meshes;
+  absl::flat_hash_map<std::string, std::shared_ptr<Mesh>> meshes;
 };

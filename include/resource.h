@@ -1,13 +1,13 @@
 #pragma once
 
+#include <absl/container/flat_hash_map.h>
+#include <absl/container/flat_hash_set.h>
 #include <assert.h>
 
 #include <functional>
 #include <memory>
 #include <string>
 #include <typeindex>
-#include <unordered_map>
-#include <unordered_set>
 
 // Manages resource loading.
 class ResourceLoader {
@@ -86,8 +86,8 @@ class ResourceLoader {
     const std::type_index type;
   };
 
-  std::unordered_map<std::string, ResourceInfo> resourceInfo;
-  std::unordered_set<std::string> loadingResources;
+  absl::flat_hash_map<std::string, ResourceInfo> resourceInfo;
+  absl::flat_hash_set<std::string> loadingResources;
   std::vector<std::shared_ptr<void>> heldResources;
   int loadingDepth = 0;
 };

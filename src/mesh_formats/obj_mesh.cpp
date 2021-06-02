@@ -37,8 +37,8 @@ std::shared_ptr<ObjModel> ObjModel::Load(const Details& details) {
   std::vector<glm::vec3> normal_pool;
 
   std::shared_ptr<Mesh> current_mesh;
-  std::unordered_map<std::tuple<int, int, int>, unsigned int> index_map;
-  std::unordered_map<unsigned int, unsigned int> point_number_of_faces;
+  absl::flat_hash_map<std::tuple<int, int, int>, unsigned int> index_map;
+  absl::flat_hash_map<unsigned int, unsigned int> point_number_of_faces;
 
   int line_number = 0;
 
