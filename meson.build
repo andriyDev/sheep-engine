@@ -4,6 +4,8 @@ project('sheep', 'cpp', default_options: ['cpp_std=c++17'])
 absl_dep = dependency('absl', modules: [
   'absl::flat_hash_map',
   'absl::flat_hash_set',
+  'absl::status',
+  'absl::statusor',
 ])
 glfw_dep = dependency('glfw3')
 gl_dep = dependency('gl')
