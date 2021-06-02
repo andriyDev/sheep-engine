@@ -21,6 +21,7 @@
 #include "systems/input_system.h"
 #include "systems/render_system.h"
 #include "utility/cached.h"
+#include "utility/status.h"
 
 std::shared_ptr<Mesh> triangleMesh() {
   std::shared_ptr<Mesh> source_mesh(new Mesh());
@@ -51,26 +52,30 @@ std::shared_ptr<Mesh> triangleMesh() {
   "1.0);\n"                                                                    \
   "}\n"
 
-void initResources() {
-  ResourceLoader::Get().Add<Shader>(
+absl::Status initResources() {
+  RETURN_IF_ERROR(ResourceLoader::Get().Add<Shader>(
       "main_shader_vertex",
-      Shader::Details{VERTEX_SHADER, false, Shader::Type::Vertex});
-  ResourceLoader::Get().Add<Shader>(
+      Shader::Details{VERTEX_SHADER, false, Shader::Type::Vertex}));
+  RETURN_IF_ERROR(ResourceLoader::Get().Add<Shader>(
       "main_shader_fragment",
-      Shader::Details{FRAGMENT_SHADER, false, Shader::Type::Fragment});
+      Shader::Details{FRAGMENT_SHADER, false, Shader::Type::Fragment}));
 
-  ResourceLoader::Get().Add<Program>(
+  RETURN_IF_ERROR(ResourceLoader::Get().Add<Program>(
       "main_program",
-      Program::Details{{"main_shader_vertex"}, {"main_shader_fragment"}});
+      Program::Details{{"main_shader_vertex"}, {"main_shader_fragment"}}));
 
-  ResourceLoader::Get().Add<Mesh>("triangle_mesh", triangleMesh);
-  ResourceLoader::Get().Add<RenderableMesh>("triangle_rmesh",
-                                            {"triangle_mesh"});
+  RETURN_IF_ERROR(
+      ResourceLoader::Get().Add<Mesh>("triangle_mesh", triangleMesh));
+  RETURN_IF_ERROR(ResourceLoader::Get().Add<RenderableMesh>("triangle_rmesh",
+                                                            {"triangle_mesh"}));
 
-  ResourceLoader::Get().Add<ObjModel>("obj", {"test_mesh.obj"});
-  ResourceLoader::Get().Add<Mesh>("obj_mesh", ObjModel::LoadMesh,
-                                  {"obj", "Blob"});
-  ResourceLoader::Get().Add<RenderableMesh>("obj_rmesh", {"obj_mesh"});
+  RETURN_IF_ERROR(
+      ResourceLoader::Get().Add<ObjModel>("obj", {"test_mesh.obj"}));
+  RETURN_IF_ERROR(ResourceLoader::Get().Add<Mesh>(
+      "obj_mesh", ObjModel::LoadMesh, {"obj", "Blob"}));
+  RETURN_IF_ERROR(
+      ResourceLoader::Get().Add<RenderableMesh>("obj_rmesh", {"obj_mesh"}));
+  return absl::OkStatus();
 }
 
 glm::vec3 ToEuler(glm::quat q) {
@@ -102,7 +107,7 @@ class PlayerControlSystem : public System {
   class PlayerNode : public Node {
    public:
     float look_sensitivity = 0.1f;
-    float move_speed = 1.f;
+    float move_speed = 0.3f;
   };
 
   void Init() override {
@@ -182,7 +187,11 @@ int main() {
     return 1;
   }
 
-  initResources();
+  absl::Status status = initResources();
+  if (!status.ok()) {
+    std::cerr << "Failed to initialize resources: " << status << std::endl;
+    return 1;
+  }
 
   std::shared_ptr<Engine> engine(new Engine());
   engine->AddSuperSystem(std::make_shared<RenderSuperSystem>(window));
@@ -226,18 +235,20 @@ int main() {
     std::shared_ptr<MeshRenderer> mesh_renderer(new MeshRenderer());
     mesh_renderer->AttachTo(world->GetRoot());
 
-    std::shared_ptr<Program> material =
+    const absl::StatusOr<std::shared_ptr<Program>> material =
         ResourceLoader::Get().Load<Program>("main_program");
-    if (!material) {
+    if (!material.ok()) {
+      std::cerr << material.status() << std::endl;
       return 1;
     }
-    std::shared_ptr<RenderableMesh> mesh =
+    const absl::StatusOr<std::shared_ptr<RenderableMesh>> mesh =
         ResourceLoader::Get().Load<RenderableMesh>("obj_rmesh");
-    if (!mesh) {
+    if (!mesh.ok()) {
+      std::cerr << mesh.status() << std::endl;
       return 1;
     }
-    mesh_renderer->mesh = mesh;
-    mesh_renderer->material = material;
+    mesh_renderer->mesh = *mesh;
+    mesh_renderer->material = *material;
 
     camera_pivot = std::shared_ptr<Transform>(new Transform());
     camera = std::shared_ptr<Camera>(new Camera());

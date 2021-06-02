@@ -2,6 +2,7 @@
 #pragma once
 
 #include <GL/glew.h>
+#include <absl/status/statusor.h>
 
 #include <memory>
 #include <string>
@@ -18,7 +19,7 @@ class Shader {
   };
   using detail_type = Details;
 
-  static std::shared_ptr<Shader> Load(const Details& details);
+  static absl::StatusOr<std::shared_ptr<Shader>> Load(const Details& details);
 
   virtual ~Shader();
 
@@ -36,7 +37,7 @@ class Program {
   };
   using detail_type = Details;
 
-  static std::shared_ptr<Program> Load(const Details& details);
+  static absl::StatusOr<std::shared_ptr<Program>> Load(const Details& details);
 
   virtual ~Program();
 

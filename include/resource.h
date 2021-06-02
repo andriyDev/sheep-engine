@@ -2,38 +2,45 @@
 
 #include <absl/container/flat_hash_map.h>
 #include <absl/container/flat_hash_set.h>
-#include <assert.h>
+#include <absl/status/statusor.h>
+#include <absl/utility/utility.h>
 
 #include <functional>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <typeindex>
+
+#include "utility/status.h"
 
 // Manages resource loading.
 class ResourceLoader {
  public:
   // Loads a resource by `resourceName` given its type.
   template <typename ResourceType>
-  std::shared_ptr<ResourceType> Load(const std::string& resourceName);
+  absl::StatusOr<std::shared_ptr<ResourceType>> Load(
+      const std::string& resourceName);
 
   // Adds a new resource with its `resourceName` and the `details` required to
   // load it.
   template <typename ResourceType>
-  void Add(const std::string& resourceName,
-           const typename ResourceType::detail_type& details);
+  absl::Status Add(const std::string& resourceName,
+                   const typename ResourceType::detail_type& details);
 
   // Adds a new resource with its `resourceName` using `loader` and the
   // `details` required to load it.
   template <typename ResourceType, typename DetailType>
-  void Add(const std::string& resourceName,
-           std::shared_ptr<ResourceType> (*loader)(const DetailType&),
-           const DetailType& details);
+  absl::Status Add(const std::string& resourceName,
+                   absl::StatusOr<std::shared_ptr<ResourceType>> (*loader)(
+                       const DetailType&),
+                   const DetailType& details);
 
   // Adds a new resource with its `resourceName` and the `loader` function to
   // load it.
   template <typename ResourceType>
-  void Add(const std::string& resourceName,
-           std::function<std::shared_ptr<ResourceType>()> loader);
+  absl::Status Add(
+      const std::string& resourceName,
+      std::function<absl::StatusOr<std::shared_ptr<ResourceType>>()> loader);
 
   // Adds 1 to depth of the loader. While loading depth is greater than 0
   // (default value), newly loaded resources are not allowed to unload.
@@ -55,29 +62,35 @@ class ResourceLoader {
 
   template <typename Resource>
   struct Loader {
-    virtual std::shared_ptr<Resource> Load() = 0;
+    virtual absl::StatusOr<std::shared_ptr<Resource>> Load() = 0;
   };
 
   template <typename ResourceType, typename Details>
   struct LoaderContainer : public Loader<ResourceType> {
-    LoaderContainer(std::shared_ptr<ResourceType> (*loader_)(const Details&),
+    LoaderContainer(absl::StatusOr<std::shared_ptr<ResourceType>> (*loader_)(
+                        const Details&),
                     const Details& value)
         : loader(loader_), contents(value) {}
 
-    std::shared_ptr<ResourceType> (*loader)(const Details&);
+    absl::StatusOr<std::shared_ptr<ResourceType>> (*loader)(const Details&);
     const Details contents;
 
-    std::shared_ptr<ResourceType> Load() override { return loader(contents); }
+    absl::StatusOr<std::shared_ptr<ResourceType>> Load() override {
+      return loader(contents);
+    }
   };
 
   template <typename ResourceType>
   struct RawLoaderContainer : public Loader<ResourceType> {
-    RawLoaderContainer(std::function<std::shared_ptr<ResourceType>()> loader_)
+    RawLoaderContainer(
+        std::function<absl::StatusOr<std::shared_ptr<ResourceType>>()> loader_)
         : loader(loader_) {}
 
-    std::function<std::shared_ptr<ResourceType>()> loader;
+    std::function<absl::StatusOr<std::shared_ptr<ResourceType>>()> loader;
 
-    std::shared_ptr<ResourceType> Load() override { return loader(); }
+    absl::StatusOr<std::shared_ptr<ResourceType>> Load() override {
+      return loader();
+    }
   };
 
   struct ResourceInfo {
@@ -95,68 +108,89 @@ class ResourceLoader {
 // ===== Template Implementations ===== //
 
 template <typename ResourceType>
-std::shared_ptr<ResourceType> ResourceLoader::Load(
+absl::StatusOr<std::shared_ptr<ResourceType>> ResourceLoader::Load(
     const std::string& resourceName) {
   auto info_it = resourceInfo.find(resourceName);
   if (info_it == resourceInfo.end()) {
-    fprintf(stderr, "Failed to load resource: %s\n", resourceName.c_str());
-    return nullptr;
+    return absl::NotFoundError(
+        STATUS_MESSAGE("Failed to find resource \"" << resourceName << "\""));
   }
-  assert(info_it->second.type == typeid(ResourceType));
+  if (info_it->second.type != typeid(ResourceType)) {
+    return absl::FailedPreconditionError(STATUS_MESSAGE(
+        "Resource \"" << resourceName
+                      << "\" is different type than requested."));
+  }
+
   std::shared_ptr<ResourceType> ptr =
       std::static_pointer_cast<ResourceType>(info_it->second.ref.lock());
   if (ptr) {
     return ptr;
   }
 
-  // Crash if dependencies form a cycle.
-  assert(loadingResources.insert(resourceName).second);
+  // Error if dependencies form a cycle.
+  if (!loadingResources.insert(resourceName).second) {
+    return absl::FailedPreconditionError("Dependencies form a cycle");
+  }
 
   IncrementLoadingDepth();
 
   const auto loader_ptr =
       static_cast<Loader<ResourceType>*>(info_it->second.loaderContainer.get());
-  ptr = loader_ptr->Load();
-  info_it->second.ref = ptr;
-
+  const absl::StatusOr<std::shared_ptr<ResourceType>> ptr_status_or =
+      loader_ptr->Load();
   DecrementLoadingDepth();
-
   // No longer loading the resource.
   loadingResources.erase(resourceName);
+
+  if (!ptr_status_or.ok()) {
+    return ptr_status_or.status();
+  }
+
+  info_it->second.ref = *ptr_status_or;
+
   // If loading depth is non-zero, hold the resource.
   if (loadingDepth > 0) {
-    heldResources.push_back(ptr);
+    heldResources.push_back(*ptr_status_or);
   }
-  return ptr;
+  return *ptr_status_or;
 }
 
 template <typename ResourceType>
-void ResourceLoader::Add(const std::string& resourceName,
-                         const typename ResourceType::detail_type& details) {
-  Add<ResourceType, typename ResourceType::detail_type>(
+absl::Status ResourceLoader::Add(
+    const std::string& resourceName,
+    const typename ResourceType::detail_type& details) {
+  return Add<ResourceType, typename ResourceType::detail_type>(
       resourceName, ResourceType::Load, details);
 }
 
 template <typename ResourceType, typename DetailType>
-void ResourceLoader::Add(
+absl::Status ResourceLoader::Add(
     const std::string& resourceName,
-    std::shared_ptr<ResourceType> (*loader)(const DetailType&),
+    absl::StatusOr<std::shared_ptr<ResourceType>> (*loader)(const DetailType&),
     const DetailType& details) {
   auto info_pair = std::make_pair(
       resourceName,
       ResourceInfo{std::make_shared<LoaderContainer<ResourceType, DetailType>>(
                        loader, details),
                    std::weak_ptr<ResourceType>(), typeid(ResourceType)});
-  assert(resourceInfo.insert(std::move(info_pair)).second);
+  return resourceInfo.insert(std::move(info_pair)).second
+             ? absl::OkStatus()
+             : absl::AlreadyExistsError(STATUS_MESSAGE(
+                   "Resource \"" << resourceName
+                                 << "\" already exists - cannot add another"));
 }
 
 template <typename ResourceType>
-void ResourceLoader::Add(
+absl::Status ResourceLoader::Add(
     const std::string& resourceName,
-    std::function<std::shared_ptr<ResourceType>()> loader) {
+    std::function<absl::StatusOr<std::shared_ptr<ResourceType>>()> loader) {
   auto info_pair = std::make_pair(
       resourceName,
       ResourceInfo{std::make_shared<RawLoaderContainer<ResourceType>>(loader),
                    std::weak_ptr<ResourceType>(), typeid(ResourceType)});
-  assert(resourceInfo.insert(std::move(info_pair)).second);
+  return resourceInfo.insert(std::move(info_pair)).second
+             ? absl::OkStatus()
+             : absl::AlreadyExistsError(STATUS_MESSAGE(
+                   "Resource \"" << resourceName
+                                 << "\" already exists - cannot add another"));
 }

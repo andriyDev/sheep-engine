@@ -2,6 +2,7 @@
 #pragma once
 
 #include <GL/glew.h>
+#include <absl/status/statusor.h>
 
 #include <glm/glm.hpp>
 #include <memory>
@@ -37,9 +38,10 @@ class RenderableMesh {
   };
   using detail_type = Details;
 
-  static std::shared_ptr<RenderableMesh> Load(const Details& details);
+  static absl::StatusOr<std::shared_ptr<RenderableMesh>> Load(
+      const Details& details);
 
-  static std::shared_ptr<RenderableMesh> LoadFromMesh(
+  static absl::StatusOr<std::shared_ptr<RenderableMesh>> LoadFromMesh(
       const std::shared_ptr<Mesh>& source_mesh);
 
   virtual ~RenderableMesh();

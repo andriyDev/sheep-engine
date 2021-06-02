@@ -22,12 +22,13 @@ struct hash<std::tuple<int, int, int>> {
 
 }  // namespace std
 
-std::shared_ptr<ObjModel> ObjModel::Load(const Details& details) {
+absl::StatusOr<std::shared_ptr<ObjModel>> ObjModel::Load(
+    const Details& details) {
   std::ifstream file;
   file.open(details.file);
   if (!file.is_open()) {
-    fprintf(stderr, "Failed to open OBJ file: \"%s\"\n", details.file.c_str());
-    return nullptr;
+    return absl::NotFoundError(
+        STATUS_MESSAGE("Failed to read OBJ file \"" << details.file << "\""));
   }
 
   std::shared_ptr<ObjModel> model(new ObjModel());
@@ -133,69 +134,67 @@ std::shared_ptr<ObjModel> ObjModel::Load(const Details& details) {
                                              std::tuple<int, int, int>& value) {
     const std::vector<std::string> elements = split_string(word, '/');
     if (elements.size() > 3) {
-      fprintf(stderr, "Too many slashes in element on line %d\n", line_number);
-      return false;
+      return absl::FailedPreconditionError(STATUS_MESSAGE(
+          "Too many slashes in element on line " << line_number));
     }
     value = std::make_tuple(-1, -1, -1);
 
     Span elements_span = {elements.cbegin(), elements.cend()};
     if (!parse_int(*elements_span.it, std::get<0>(value))) {
-      fprintf(stderr, "Failed to parse first index \"%s\" on line %d\n",
-              elements_span.it->c_str(), line_number);
-      return false;
+      return absl::FailedPreconditionError(STATUS_MESSAGE(
+          "Failed to parse first index \"" << elements_span.it->c_str()
+                                           << "\" on line " << line_number));
     }
     if (!make_index_safe(std::get<0>(value), position_pool.size())) {
-      fprintf(stderr, "Invalid first index \"%s\" on line %d\n",
-              elements_span.it->c_str(), line_number);
-      return false;
+      return absl::FailedPreconditionError(STATUS_MESSAGE(
+          "Invalid first index \"" << elements_span.it->c_str() << "\" on line"
+                                   << line_number));
     }
     ++elements_span.it;
 
     if (elements_span.it == elements_span.end) {
-      return true;
+      return absl::OkStatus();
     }
 
     if (*elements_span.it == "") {
       if (elements_span.it == elements_span.end) {
-        fprintf(stderr, "Element index cannot end with slash. Line %d\n",
-                line_number);
-        return false;
+        return absl::FailedPreconditionError(STATUS_MESSAGE(
+            "Element index cannot end with slash. Line " << line_number));
       }
       std::get<1>(value) = -1;
     } else {
       if (!parse_int(*elements_span.it, std::get<1>(value))) {
-        fprintf(stderr, "Failed to parse second index \"%s\" on line %d\n",
-                elements_span.it->c_str(), line_number);
-        return false;
+        return absl::FailedPreconditionError(STATUS_MESSAGE(
+            "Failed to parse second index \"" << elements_span.it->c_str()
+                                              << "\" on line" << line_number));
       }
       if (!make_index_safe(std::get<1>(value), tex_coord_pool.size())) {
-        fprintf(stderr, "Invalid second index \"%s\" on line %d\n",
-                elements_span.it->c_str(), line_number);
-        return false;
+        return absl::FailedPreconditionError(STATUS_MESSAGE(
+            "Invalid second index \"" << elements_span.it->c_str()
+                                      << "\" on line" << line_number));
       }
     }
     ++elements_span.it;
     if (elements_span.it == elements_span.end) {
-      return true;
+      return absl::OkStatus();
     }
 
     if (*elements_span.it == "") {
-      fprintf(stderr, "Element index cannot end with slash. Line %d\n",
-              line_number);
-      return false;
+      return absl::FailedPreconditionError(STATUS_MESSAGE(
+          "Element index cannot end with slash. Line " << line_number));
     } else {
       if (!parse_int(*elements_span.it, std::get<2>(value))) {
-        fprintf(stderr, "Failed to parse third index \"%s\" on line %d\n",
-                elements_span.it->c_str(), line_number);
-        return false;
+        return absl::FailedPreconditionError(STATUS_MESSAGE(
+            "Failed to parse third index \"" << elements_span.it->c_str()
+                                             << "\" on line" << line_number));
       }
       if (!make_index_safe(std::get<2>(value), normal_pool.size())) {
-        fprintf(stderr, "Invalid third index \"%s\" on line %d\n",
-                elements_span.it->c_str(), line_number);
-        return false;
+        return absl::FailedPreconditionError(STATUS_MESSAGE(
+            "Invalid third index \"" << elements_span.it->c_str()
+                                     << "\" on line" << line_number));
       }
     }
-    return true;
+    return absl::OkStatus();
   };
 
   std::string line;
@@ -210,9 +209,8 @@ std::shared_ptr<ObjModel> ObjModel::Load(const Details& details) {
     } else if (word == "o") {
       // Get the name of the new object.
       if (!get_word(words_span, word)) {
-        fprintf(stderr, "Missing name for \"o\" command on line %d\n",
-                line_number);
-        return nullptr;
+        return absl::FailedPreconditionError(STATUS_MESSAGE(
+            "Missing name for \"o\" command on line " << line_number));
       }
       // Create the new object.
       new_current_mesh(word);
@@ -221,8 +219,8 @@ std::shared_ptr<ObjModel> ObjModel::Load(const Details& details) {
       // Get the vec3 to store.
       if (!get_vec3(words_span, position)) {
         file.close();
-        fprintf(stderr, "Failed to read vec3 on line %d\n", line_number);
-        return nullptr;
+        return absl::FailedPreconditionError(
+            STATUS_MESSAGE("Failed to read vec3 on line " << line_number));
       }
       // Add the vector to the pool.
       position_pool.push_back(position);
@@ -231,8 +229,8 @@ std::shared_ptr<ObjModel> ObjModel::Load(const Details& details) {
       // Get the vec2 to store.
       if (!get_vec2(words_span, tex_coord)) {
         file.close();
-        fprintf(stderr, "Failed to read vec2 on line %d\n", line_number);
-        return nullptr;
+        return absl::FailedPreconditionError(
+            STATUS_MESSAGE("Failed to read vec2 on line " << line_number));
       }
       // Add the vector to the pool.
       tex_coord_pool.push_back(tex_coord);
@@ -241,8 +239,8 @@ std::shared_ptr<ObjModel> ObjModel::Load(const Details& details) {
       // Get the vec3 to store.
       if (!get_vec3(words_span, normal)) {
         file.close();
-        fprintf(stderr, "Failed to read vec3 on line %d\n", line_number);
-        return nullptr;
+        return absl::FailedPreconditionError(
+            STATUS_MESSAGE("Failed to read vec3 on line " << line_number));
       }
       // Add the vector to the pool.
       normal_pool.push_back(normal);
@@ -255,14 +253,12 @@ std::shared_ptr<ObjModel> ObjModel::Load(const Details& details) {
       // Keep consuming words until all are consumed.
       while (words_span.it != words_span.end) {
         face_elements.push_back(std::make_tuple(0, 0, 0));
-        if (!parse_index(*words_span.it++, face_elements.back())) {
-          return nullptr;
-        }
+        RETURN_IF_ERROR(parse_index(*words_span.it++, face_elements.back()));
       }
       // Ensure at least one triangle is present.
       if (face_elements.size() < 3) {
-        fprintf(stderr, "Not enough face elements on line %d\n", line_number);
-        return nullptr;
+        return absl::FailedPreconditionError(
+            STATUS_MESSAGE("Not enough face elements on line " << line_number));
       }
       // Maps element index to vertex index.
       std::vector<unsigned int> points;
@@ -337,20 +333,15 @@ std::shared_ptr<ObjModel> ObjModel::Load(const Details& details) {
   return model;
 }
 
-std::shared_ptr<Mesh> ObjModel::LoadMesh(const MeshDetails& details) {
-  const std::shared_ptr<ObjModel> model =
-      ResourceLoader::Get().Load<ObjModel>(details.obj_model);
-  if (!model) {
-    fprintf(stderr, "Failed to load OBJ resource: \"%s\"\n",
-            details.obj_model.c_str());
-    return nullptr;
-  }
-
+absl::StatusOr<std::shared_ptr<Mesh>> ObjModel::LoadMesh(
+    const MeshDetails& details) {
+  ASSIGN_OR_RETURN(const std::shared_ptr<ObjModel> model,
+                   ResourceLoader::Get().Load<ObjModel>(details.obj_model));
   const auto mesh_it = model->meshes.find(details.name);
   if (mesh_it == model->meshes.end()) {
-    fprintf(stderr, "No mesh named \"%s\" in OBJ file \"%s\"\n",
-            details.name.c_str(), details.obj_model.c_str());
-    return nullptr;
+    return absl::NotFoundError(
+        STATUS_MESSAGE("No mesh named \"" << details.name << "\" in OBJ file \""
+                                          << details.obj_model << "\""));
   }
   return mesh_it->second;
 }

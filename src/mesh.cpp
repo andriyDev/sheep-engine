@@ -4,26 +4,21 @@
 #include <memory>
 
 #include "resource.h"
+#include "utility/status.h"
 
-std::shared_ptr<RenderableMesh> RenderableMesh::Load(const Details& details) {
-  const std::shared_ptr<Mesh> source_mesh =
-      ResourceLoader::Get().Load<Mesh>(details.mesh);
-  if (!source_mesh) {
-    fprintf(stderr, "Failed to load source mesh \"%s\"\n",
-            details.mesh.c_str());
-    return nullptr;
-  }
+absl::StatusOr<std::shared_ptr<RenderableMesh>> RenderableMesh::Load(
+    const Details& details) {
+  ASSIGN_OR_RETURN(const std::shared_ptr<Mesh> source_mesh,
+                   ResourceLoader::Get().Load<Mesh>(details.mesh));
   return LoadFromMesh(source_mesh);
 }
 
-std::shared_ptr<RenderableMesh> RenderableMesh::LoadFromMesh(
+absl::StatusOr<std::shared_ptr<RenderableMesh>> RenderableMesh::LoadFromMesh(
     const std::shared_ptr<Mesh>& source_mesh) {
   if (source_mesh->triangles.size() > 0 &&
       source_mesh->small_triangles.size() > 0) {
-    fprintf(stderr,
-            "Invalid source mesh: Contains both large- and small-indexed "
-            "triangles.");
-    return nullptr;
+    return absl::FailedPreconditionError(
+        "Source mesh contains both large- and small-indexed triangles.");
   }
   std::shared_ptr<RenderableMesh> new_mesh(new RenderableMesh());
   new_mesh->vertex_attribute_count = 5;

@@ -14,13 +14,14 @@ struct ObjModel {
   };
   using detail_type = Details;
 
-  static std::shared_ptr<ObjModel> Load(const Details& details);
+  static absl::StatusOr<std::shared_ptr<ObjModel>> Load(const Details& details);
 
   struct MeshDetails {
     std::string obj_model;
     std::string name;
   };
-  static std::shared_ptr<Mesh> LoadMesh(const MeshDetails& details);
+  static absl::StatusOr<std::shared_ptr<Mesh>> LoadMesh(
+      const MeshDetails& details);
 
   absl::flat_hash_map<std::string, std::shared_ptr<Mesh>> meshes;
 };
