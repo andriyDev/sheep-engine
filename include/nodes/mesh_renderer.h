@@ -3,9 +3,9 @@
 
 #include <memory>
 
-#include "mesh.h"
 #include "nodes/transform.h"
-#include "shader.h"
+#include "resources/mesh.h"
+#include "resources/shader.h"
 #include "systems/render_system.h"
 
 class MeshRenderer : public Transform, public Renderable {

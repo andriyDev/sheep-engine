@@ -1,12 +1,12 @@
 
-#include "mesh_formats/obj_mesh.h"
+#include "resources/mesh_formats/obj_mesh.h"
 
 #include <fstream>
 #include <sstream>
 #include <variant>
 #include <vector>
 
-#include "resource.h"
+#include "resources/resource.h"
 
 namespace std {
 

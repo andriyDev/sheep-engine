@@ -1,9 +1,9 @@
 
-#include "mesh.h"
+#include "resources/mesh.h"
 
 #include <memory>
 
-#include "resource.h"
+#include "resources/resource.h"
 #include "utility/status.h"
 
 absl::StatusOr<std::shared_ptr<RenderableMesh>> RenderableMesh::Load(

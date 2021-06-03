@@ -1,5 +1,5 @@
 
-#include "shader.h"
+#include "resources/shader.h"
 
 #include <GL/GL.h>
 #include <GL/glew.h>
@@ -9,7 +9,7 @@
 #include <optional>
 #include <sstream>
 
-#include "resource.h"
+#include "resources/resource.h"
 
 absl::StatusOr<std::string> getShaderCode(const Shader::Details& details) {
   if (!details.read_file) {

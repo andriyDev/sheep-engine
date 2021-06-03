@@ -13,12 +13,12 @@
 #include <string>
 
 #include "engine.h"
-#include "mesh.h"
-#include "mesh_formats/obj_mesh.h"
 #include "nodes/mesh_renderer.h"
 #include "nodes/transform.h"
-#include "resource.h"
-#include "shader.h"
+#include "resources/mesh.h"
+#include "resources/mesh_formats/obj_mesh.h"
+#include "resources/resource.h"
+#include "resources/shader.h"
 #include "systems/input_system.h"
 #include "systems/render_system.h"
 #include "utility/cached.h"

@@ -1,4 +1,4 @@
 
-#include "resource.h"
+#include "resources/resource.h"
 
 ResourceLoader ResourceLoader::instance;

@@ -6,7 +6,7 @@
 #include <memory>
 #include <string>
 
-#include "mesh.h"
+#include "resources/mesh.h"
 
 struct ObjModel {
   struct Details {
