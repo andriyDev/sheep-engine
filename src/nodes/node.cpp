@@ -1,22 +1,21 @@
 
 #include "nodes/node.h"
 
-#include <assert.h>
+#include <glog/logging.h>
 #include <stdio.h>
 
 #include "nodes/utility.h"
 #include "world.h"
 
 void Node::AttachNode(const std::shared_ptr<Node>& child, int index) {
-  assert(child.get());
-  assert(!child->GetParent().get());
+  CHECK(child.get() && !child->GetParent().get());
   child->world = GetWorld();
   child->parent = this->shared_from_this();
   if (index < 0) {
     index += children.size() + 1;
-    assert(index >= 0);
+    CHECK(index >= 0);
   } else {
-    assert(index < children.size());
+    CHECK(index < children.size());
   }
   children.insert(children.begin() + index, child);
 
@@ -31,8 +30,7 @@ void Node::AttachNode(const std::shared_ptr<Node>& child, int index) {
 }
 
 void Node::DetachNode(const std::shared_ptr<Node>& child) {
-  assert(child.get());
-  assert(child->GetParent().get() == this);
+  CHECK(child.get() && child->GetParent().get() == this);
 
   for (const std::shared_ptr<Node>& node : CollectPreOrderNodes(child)) {
     node->NotifyOfAncestorDetachment(this->shared_from_this(), child);

@@ -1,6 +1,8 @@
 
 #include "nodes/camera.h"
 
+#include <glog/logging.h>
+
 #include <glm/gtc/matrix_inverse.hpp>
 
 glm::mat4 Camera::GetProjectionMatrix(float aspect) const {
@@ -10,9 +12,10 @@ glm::mat4 Camera::GetProjectionMatrix(float aspect) const {
     case Projection::Orthographic:
       return glm::ortho(-0.5 * size * aspect, 0.5 * size * aspect, 0.5 * size,
                         -0.5 * size);
+    default:
+      CHECK(false);
+      return glm::mat4();
   }
-  assert(false);
-  return glm::mat4();
 }
 
 glm::mat4 Camera::GetProjectionView(float aspect) const {

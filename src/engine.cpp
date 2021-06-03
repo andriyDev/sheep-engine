@@ -1,7 +1,7 @@
 
 #include "engine.h"
 
-#include <assert.h>
+#include <glog/logging.h>
 
 std::shared_ptr<World> Engine::CreateWorld() {
   std::shared_ptr<World> world(new World());
@@ -29,9 +29,7 @@ void Engine::RemoveWorld(const std::shared_ptr<World>& world) {
 }
 
 void Engine::InitWorld(const std::shared_ptr<World>& world) {
-  assert(world.get());
-  assert(world->GetEngine().get() == this);
-  assert(is_initialized);
+  CHECK(is_initialized && world.get() && world->GetEngine().get() == this);
 
   if (world->is_initialized) {
     return;
@@ -51,13 +49,13 @@ void Engine::InitWorld(const std::shared_ptr<World>& world) {
 const std::shared_ptr<SuperSystem>& Engine::AddSuperSystem(
     const std::shared_ptr<SuperSystem>& super_system, int index) {
   // Only allow adding `super_system` if it is not a part of some engine.
-  assert(!super_system->GetEngine().get());
+  CHECK(!super_system->GetEngine().get());
   super_system->engine = this->shared_from_this();
   if (index < 0) {
     index += super_systems.size() + 1;
-    assert(index >= 0);
+    CHECK(index >= 0);
   } else {
-    assert(index < super_systems.size());
+    CHECK(index < super_systems.size());
   }
   super_systems.insert(super_systems.begin() + index, super_system);
 

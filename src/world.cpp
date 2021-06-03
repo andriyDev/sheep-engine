@@ -1,7 +1,7 @@
 
 #include "world.h"
 
-#include <assert.h>
+#include <glog/logging.h>
 
 #include "engine.h"
 
@@ -12,7 +12,7 @@ void World::SetRoot(const std::shared_ptr<Node>& new_root) {
     root->world = std::shared_ptr<World>();
   }
 
-  assert(new_root.get());
+  CHECK(new_root.get());
   root = new_root;
   root->world = this->shared_from_this();
 
@@ -22,15 +22,15 @@ void World::SetRoot(const std::shared_ptr<Node>& new_root) {
 const std::shared_ptr<System>& World::AddSystem(
     const std::shared_ptr<System>& new_system, int index) {
   // Only allow adding `new_system` if it is not a part of some world.
-  assert(!new_system->GetWorld().get());
+  CHECK(!new_system->GetWorld().get());
   const std::shared_ptr<World> this_ptr = this->shared_from_this();
   new_system->engine = GetEngine();
   new_system->world = this_ptr;
   if (index < 0) {
     index += systems.size() + 1;
-    assert(index >= 0);
+    CHECK(index >= 0);
   } else {
-    assert(index < systems.size());
+    CHECK(index < systems.size());
   }
   systems.insert(systems.begin() + index, new_system);
 

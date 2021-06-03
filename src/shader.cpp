@@ -3,6 +3,7 @@
 
 #include <GL/GL.h>
 #include <GL/glew.h>
+#include <glog/logging.h>
 
 #include <fstream>
 #include <optional>
@@ -33,7 +34,7 @@ GLuint getGLShaderType(const Shader::Type type) {
     case Shader::Type::Fragment:
       return GL_FRAGMENT_SHADER;
     default:
-      assert(false);
+      CHECK(false);
       return 0;
   }
 }
