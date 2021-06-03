@@ -1,6 +1,7 @@
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <glog/logging.h>
 #include <math.h>
 #include <stdio.h>
 
@@ -164,32 +165,34 @@ class PlayerControlSystem : public System {
 };
 
 void glfw_error(int error, const char* description) {
-  fprintf(stderr, "GLFW Error: %s\n", description);
+  LOG(FATAL) << "GLFW Error: " << description;
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+  google::InitGoogleLogging(argv[0]);
+
   if (!glfwInit()) {
-    fprintf(stderr, "Error initializing GLFW\n");
+    LOG(FATAL) << "Error initializing GLFW";
     return 1;
   }
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
   GLFWwindow* window = glfwCreateWindow(1280, 720, "Title", NULL, NULL);
   if (!window) {
-    fprintf(stderr, "Failed to create window.\n");
+    LOG(FATAL) << "Failed to create window";
     return 1;
   }
   glfwMakeContextCurrent(window);
 
   const GLenum err = glewInit();
   if (err != GLEW_OK) {
-    fprintf(stderr, "Error initializing GLEW : %s\n", glewGetErrorString(err));
+    LOG(FATAL) << "Error initializing GLEW: " << glewGetErrorString(err);
     return 1;
   }
 
   absl::Status status = initResources();
   if (!status.ok()) {
-    std::cerr << "Failed to initialize resources: " << status << std::endl;
+    LOG(FATAL) << "Failed to initialize resources: " << status;
     return 1;
   }
 
@@ -238,13 +241,13 @@ int main() {
     const absl::StatusOr<std::shared_ptr<Program>> material =
         ResourceLoader::Get().Load<Program>("main_program");
     if (!material.ok()) {
-      std::cerr << material.status() << std::endl;
+      LOG(FATAL) << "Failed to load \"main_program\": " << material.status();
       return 1;
     }
     const absl::StatusOr<std::shared_ptr<RenderableMesh>> mesh =
         ResourceLoader::Get().Load<RenderableMesh>("obj_rmesh");
     if (!mesh.ok()) {
-      std::cerr << mesh.status() << std::endl;
+      LOG(FATAL) << "Failed to load \"obj_rmesh\": " << mesh.status();
       return 1;
     }
     mesh_renderer->mesh = *mesh;

@@ -1,7 +1,7 @@
 
 #include "systems/input_system.h"
 
-#include <stdio.h>
+#include <glog/logging.h>
 
 #define GLFW_KEY_SIZE (GLFW_KEY_LAST + 1)
 
@@ -70,7 +70,7 @@ void InputSuperSystem::ClearButton(const std::string& name) {
   // Find the button.
   auto button_it = buttons.find(name);
   if (button_it == buttons.end()) {
-    fprintf(stderr, "Button \"%s\" does not exist.\n", name.c_str());
+    LOG(ERROR) << "Button \"" << name << "\" does not exist";
     return;
   }
   // Go through all button keys and erase them.
@@ -200,7 +200,7 @@ void InputSuperSystem::CreateAxis(
 void InputSuperSystem::ClearAxis(const std::string& name) {
   auto axis_it = axes.find(name);
   if (axis_it == axes.end()) {
-    fprintf(stderr, "Axis \"%s\" does not exist.\n", name.c_str());
+    LOG(ERROR) << "Axis \"" << name << "\" does not exist";
     return;
   }
   Axis& axis = axis_it->second;
@@ -254,7 +254,7 @@ InputSuperSystem::GetAxes() const {
 bool InputSuperSystem::IsButtonPressed(const std::string& name) const {
   const auto& button_it = buttons.find(name);
   if (button_it == buttons.end()) {
-    fprintf(stderr, "Invalid button name \"%s\"\n", name.c_str());
+    LOG(WARNING) << "Invalid button name \"" << name << "\"";
     return false;
   }
   for (const auto& [key, modifiers] : button_it->second.keys_with_modifier) {
@@ -272,7 +272,7 @@ bool InputSuperSystem::IsButtonPressed(const std::string& name) const {
 bool InputSuperSystem::IsButtonDown(const std::string& name) const {
   const auto& button_it = buttons.find(name);
   if (button_it == buttons.end()) {
-    fprintf(stderr, "Invalid button name \"%s\"\n", name.c_str());
+    LOG(WARNING) << "Invalid button name \"" << name << "\"";
     return false;
   }
   for (const auto& [key, modifiers] : button_it->second.keys_with_modifier) {
@@ -290,7 +290,7 @@ bool InputSuperSystem::IsButtonDown(const std::string& name) const {
 bool InputSuperSystem::IsButtonReleased(const std::string& name) const {
   const auto& button_it = buttons.find(name);
   if (button_it == buttons.end()) {
-    fprintf(stderr, "Invalid button name \"%s\"\n", name.c_str());
+    LOG(WARNING) << "Invalid button name \"" << name << "\"";
     return false;
   }
   for (const auto& [key, modifiers] : button_it->second.keys_with_modifier) {
@@ -308,7 +308,7 @@ bool InputSuperSystem::IsButtonReleased(const std::string& name) const {
 float InputSuperSystem::GetAxisValue(const std::string& name) const {
   const auto& axis_it = axes.find(name);
   if (axis_it == axes.end()) {
-    fprintf(stderr, "Invalid axis name \"%s\"\n", name.c_str());
+    LOG(WARNING) << "Invalid axis name \"" << name << "\"";
     return 0;
   }
   const Axis& axis = axis_it->second;

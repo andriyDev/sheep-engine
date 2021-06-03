@@ -10,6 +10,7 @@ absl_dep = dependency('absl', modules: [
 glfw_dep = dependency('glfw3')
 gl_dep = dependency('gl')
 glew_dep = dependency('glew')
+glog_dep = dependency('glog')
 
 inc = include_directories('include/')
 
@@ -31,8 +32,9 @@ executable('sheep', [
   'src/systems/system.cpp',
   'src/world.cpp'
 ], dependencies: [
-  glfw_dep,
+  absl_dep,
   gl_dep,
   glew_dep,
-  absl_dep
+  glfw_dep,
+  glog_dep,
 ], include_directories: inc)
