@@ -81,11 +81,11 @@ void InputSuperSystem::ClearButton(const std::string& name) {
   buttons.erase(button_it);
 }
 
-std::vector<
-    std::pair<std::string, std::vector<InputSuperSystem::ButtonDefinition>>>
+absl::flat_hash_map<std::string,
+                    std::vector<InputSuperSystem::ButtonDefinition>>
 InputSuperSystem::GetButtons() const {
-  std::vector<
-      std::pair<std::string, std::vector<InputSuperSystem::ButtonDefinition>>>
+  absl::flat_hash_map<std::string,
+                      std::vector<InputSuperSystem::ButtonDefinition>>
       result;
   result.reserve(buttons.size());
   // Go through each button.
@@ -105,7 +105,7 @@ InputSuperSystem::GetButtons() const {
       definition.modifiers = modifiers;
       definitions.push_back(definition);
     }
-    result.push_back(std::make_pair(name, definitions));
+    result.insert(std::make_pair(name, definitions));
   }
   return result;
 }
@@ -210,18 +210,18 @@ void InputSuperSystem::ClearAxis(const std::string& name) {
   axes.erase(axis_it);
 }
 
-std::vector<
-    std::pair<std::string, std::vector<InputSuperSystem::AxisDefinition>>>
+absl::flat_hash_map<std::string, std::vector<InputSuperSystem::AxisDefinition>>
 InputSuperSystem::GetAxes() const {
-  std::vector<
-      std::pair<std::string, std::vector<InputSuperSystem::AxisDefinition>>>
+  absl::flat_hash_map<std::string,
+                      std::vector<InputSuperSystem::AxisDefinition>>
       result;
   result.reserve(axes.size());
   for (const auto& [name, axis] : axes) {
-    result.push_back(
-        std::make_pair(name, std::vector<InputSuperSystem::AxisDefinition>()));
-    std::vector<InputSuperSystem::AxisDefinition>& definitions =
-        result.back().second;
+    auto it = result
+                  .insert(std::make_pair(
+                      name, std::vector<InputSuperSystem::AxisDefinition>()))
+                  .first;
+    std::vector<InputSuperSystem::AxisDefinition>& definitions = it->second;
     if (axis.mouse_move_weights[0] != 0) {
       definitions.push_back(AxisDefinition::MouseMove(
           AxisDefinition::Direction::Horizontal, axis.mouse_move_weights[0]));

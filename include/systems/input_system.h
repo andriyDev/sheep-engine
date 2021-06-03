@@ -38,8 +38,8 @@ class InputSuperSystem : public SuperSystem {
   // Removes the button with `name`.
   void ClearButton(const std::string& name);
   // Gets all button names and the buttons they refer to.
-  std::vector<std::pair<std::string, std::vector<ButtonDefinition>>>
-  GetButtons() const;
+  absl::flat_hash_map<std::string, std::vector<ButtonDefinition>> GetButtons()
+      const;
 
   struct AxisDefinition {
     enum class Type { Key, MouseButton, MouseMove, Scroll } type;
@@ -65,8 +65,7 @@ class InputSuperSystem : public SuperSystem {
   // Removes the axis with `name`.
   void ClearAxis(const std::string& name);
   // Gets all axis names and the definitions they refer to.
-  std::vector<std::pair<std::string, std::vector<AxisDefinition>>> GetAxes()
-      const;
+  absl::flat_hash_map<std::string, std::vector<AxisDefinition>> GetAxes() const;
 
   bool IsButtonPressed(const std::string& name) const;
   bool IsButtonDown(const std::string& name) const;
