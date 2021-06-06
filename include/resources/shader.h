@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include "utility/resource_handle.h"
+
 class Shader {
  public:
   enum class Type { Vertex, Fragment };
@@ -32,8 +34,8 @@ class Shader {
 class Program {
  public:
   struct Details {
-    std::vector<std::string> vertex_shaders;
-    std::vector<std::string> fragment_shaders;
+    std::vector<ResourceHandle<Shader>> vertex_shaders;
+    std::vector<ResourceHandle<Shader>> fragment_shaders;
   };
   using detail_type = Details;
 

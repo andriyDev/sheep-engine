@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include "utility/resource_handle.h"
+
 class Mesh {
  public:
   struct Vertex {
@@ -34,15 +36,12 @@ class Mesh {
 class RenderableMesh {
  public:
   struct Details {
-    std::string mesh;
+    ResourceHandle<Mesh> mesh;
   };
   using detail_type = Details;
 
   static absl::StatusOr<std::shared_ptr<RenderableMesh>> Load(
       const Details& details);
-
-  static absl::StatusOr<std::shared_ptr<RenderableMesh>> LoadFromMesh(
-      const std::shared_ptr<Mesh>& source_mesh);
 
   virtual ~RenderableMesh();
 

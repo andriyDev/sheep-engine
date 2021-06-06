@@ -69,18 +69,15 @@ absl::StatusOr<std::shared_ptr<Program>> Program::Load(const Details& details) {
   std::vector<std::shared_ptr<Shader>> shaders;
   shaders.reserve(details.vertex_shaders.size() +
                   details.fragment_shaders.size());
-  for (const std::string& vertex_shader_name : details.vertex_shaders) {
+  for (const ResourceHandle<Shader>& vertex_shader_handle :
+       details.vertex_shaders) {
     shaders.push_back(nullptr);
-    ASSIGN_OR_RETURN(shaders.back(),
-                     ResourceLoader::Get().Load<Shader>(vertex_shader_name));
-    if (!shaders.back()) {
-      std::cerr << "null shader?>??" << std::endl;
-    }
+    ASSIGN_OR_RETURN(shaders.back(), vertex_shader_handle.Get());
   }
-  for (const std::string& fragment_shader_name : details.fragment_shaders) {
+  for (const ResourceHandle<Shader>& fragment_shader_handle :
+       details.fragment_shaders) {
     shaders.push_back(nullptr);
-    ASSIGN_OR_RETURN(shaders.back(),
-                     ResourceLoader::Get().Load<Shader>(fragment_shader_name));
+    ASSIGN_OR_RETURN(shaders.back(), fragment_shader_handle.Get());
   }
   std::shared_ptr<Program> program(new Program());
   program->id = glCreateProgram();

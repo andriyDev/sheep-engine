@@ -8,13 +8,8 @@
 
 absl::StatusOr<std::shared_ptr<RenderableMesh>> RenderableMesh::Load(
     const Details& details) {
-  ASSIGN_OR_RETURN(const std::shared_ptr<Mesh> source_mesh,
-                   ResourceLoader::Get().Load<Mesh>(details.mesh));
-  return LoadFromMesh(source_mesh);
-}
+  ASSIGN_OR_RETURN(const std::shared_ptr<Mesh> source_mesh, details.mesh.Get());
 
-absl::StatusOr<std::shared_ptr<RenderableMesh>> RenderableMesh::LoadFromMesh(
-    const std::shared_ptr<Mesh>& source_mesh) {
   if (source_mesh->triangles.size() > 0 &&
       source_mesh->small_triangles.size() > 0) {
     return absl::FailedPreconditionError(
