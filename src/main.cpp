@@ -108,7 +108,7 @@ class PlayerControlSystem : public System {
   class PlayerNode : public Node {
    public:
     float look_sensitivity = 0.1f;
-    float move_speed = 0.3f;
+    float move_speed = 3.f;
   };
 
   void Init() override {
@@ -144,11 +144,12 @@ class PlayerControlSystem : public System {
       euler.y = clamp(euler.y + look.y * node->look_sensitivity, -89, 89);
       euler.z += look.z * delta_seconds;
       node_transform->SetRotation(FromEuler(euler));
-      // printf("Euler: %s\n", glm::to_string(euler).c_str());
+
       glm::vec3 forward = node_transform->GetRotation() * glm::vec3(0, 0, -1);
       glm::vec3 right = node_transform->GetRotation() * glm::vec3(1, 0, 0);
       node_transform->SetPosition(node_transform->GetPosition() +
-                                  forward * move.y + right * move.x);
+                                  (forward * move.y + right * move.x) *
+                                      node->move_speed * delta_seconds);
     }
   }
 
