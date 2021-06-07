@@ -7,9 +7,9 @@ absl_dep = dependency('absl', modules: [
   'absl::status',
   'absl::statusor',
 ])
-glfw_dep = dependency('glfw3')
 gl_dep = dependency('gl')
 glew_dep = dependency('glew')
+glfw_dep = dependency('glfw3', modules: [ 'glfw' ])
 glog_dep = dependency('glog')
 
 inc = include_directories('include/')
