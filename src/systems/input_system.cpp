@@ -440,7 +440,7 @@ void InputSuperSystem::KeyCallback(GLFWwindow* window, int key, int scancode,
   if (action == GLFW_PRESS) {
     watch->is_pressed = true;
     watch->is_down = true;
-  } else {
+  } else if(action == GLFW_RELEASE) {
     watch->is_down = false;
     watch->is_released = true;
   }
@@ -457,7 +457,7 @@ void InputSuperSystem::MouseButtonCallback(GLFWwindow* window, int button,
   if (action == GLFW_PRESS) {
     watch->is_pressed = true;
     watch->is_down = true;
-  } else {
+  } else if(action == GLFW_RELEASE) {
     watch->is_down = false;
     watch->is_released = true;
   }
