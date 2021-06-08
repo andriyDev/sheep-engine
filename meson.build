@@ -26,6 +26,7 @@ executable('sheep', [
   'src/resources/mesh_formats/obj_mesh.cpp',
   'src/resources/resource.cpp',
   'src/resources/shader.cpp',
+  'src/resources/texture.cpp',
   'src/systems/input_system.cpp',
   'src/systems/render_system.cpp',
   'src/systems/super_system.cpp',
