@@ -1,8 +1,12 @@
 
 #pragma once
 
+#include <GL/glew.h>
+#include <absl/status/statusor.h>
+
 #include <glm/detail/type_vec4.hpp>
 #include <glm/glm.hpp>
+#include <memory>
 
 #include "utility/resource_handle.h"
 
@@ -35,4 +39,39 @@ class Texture {
     pixel_rgb* data_rgb;
     pixel_grey* data_grey;
   };
+};
+
+class RenderableTexture {
+ public:
+  enum class WrapMode { Repeat, Clamp };
+  enum class FilterMode { Linear, Nearest };
+
+  struct Details {
+    ResourceHandle<Texture> texture;
+
+    WrapMode x_wrap;
+    WrapMode y_wrap;
+
+    FilterMode min_filter;
+    FilterMode mag_filter;
+
+    bool use_mipmaps;
+  };
+  using detail_type = Details;
+
+  static absl::StatusOr<std::shared_ptr<RenderableTexture>> Load(
+      const Details& details);
+
+  ~RenderableTexture();
+
+  void Use(unsigned int texture_unit);
+
+  uint32_t GetWidth() const;
+  uint32_t GetHeight() const;
+
+ private:
+  uint32_t width;
+  uint32_t height;
+
+  GLuint id = 0;
 };
