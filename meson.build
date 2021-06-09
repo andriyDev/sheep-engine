@@ -31,6 +31,7 @@ executable('sheep', [
   'src/systems/render_system.cpp',
   'src/systems/super_system.cpp',
   'src/systems/system.cpp',
+  'src/utility/scope_cleanup.cpp',
   'src/world.cpp'
 ], dependencies: [
   absl_dep,
