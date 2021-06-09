@@ -3,50 +3,119 @@
 
 #include <glog/logging.h>
 
-Texture::Texture(Texture::PixelType type_, uint32_t width_, uint32_t height_)
-    : type(type_), width(width_), height(height_) {
-  switch (type) {
-    case PixelType::RGBA:
-      data_rgba = new pixel_rgba[width * height];
+Texture::Texture(Texture::PixelType type_, unsigned int bit_depth_,
+                 uint32_t width_, uint32_t height_)
+    : pixel_type(type_), bit_depth(bit_depth_), width(width_), height(height_) {
+  switch (bit_depth) {
+    case 8:
+      switch (pixel_type) {
+        case PixelType::RGBA:
+          data_rgba_8 = new pixel_rgba_8[width * height];
+          break;
+        case PixelType::RGB:
+          data_rgb_8 = new pixel_rgb_8[width * height];
+          break;
+        case PixelType::Grey:
+          data_grey_8 = new pixel_grey_8[width * height];
+          break;
+        default:
+          CHECK(false);
+      }
       break;
-    case PixelType::RGB:
-      data_rgb = new pixel_rgb[width * height];
+    case 16:
+      switch (pixel_type) {
+        case PixelType::RGBA:
+          data_rgba_16 = new pixel_rgba_16[width * height];
+          break;
+        case PixelType::RGB:
+          data_rgb_16 = new pixel_rgb_16[width * height];
+          break;
+        case PixelType::Grey:
+          data_grey_16 = new pixel_grey_16[width * height];
+          break;
+        default:
+          CHECK(false);
+      }
       break;
-    case PixelType::Grey:
-      data_grey = new pixel_grey[width * height];
+    case 32:
+      switch (pixel_type) {
+        case PixelType::RGBA:
+          data_rgba_32 = new pixel_rgba_32[width * height];
+          break;
+        case PixelType::RGB:
+          data_rgb_32 = new pixel_rgb_32[width * height];
+          break;
+        case PixelType::Grey:
+          data_grey_32 = new pixel_grey_32[width * height];
+          break;
+        default:
+          CHECK(false);
+      }
       break;
     default:
-      CHECK(false);
+      CHECK(false) << "Invalid bit depth: " << bit_depth;
   }
 }
 
 Texture::~Texture() {
-  switch (type) {
-    case PixelType::RGBA:
-      delete[] data_rgba;
+  switch (bit_depth | (uint8_t)pixel_type) {
+    case 8 | (uint8_t)PixelType::RGBA:
+      delete[] data_rgba_8;
       break;
-    case PixelType::RGB:
-      delete[] data_rgb;
+    case 8 | (uint8_t)PixelType::RGB:
+      delete[] data_rgb_8;
       break;
-    case PixelType::Grey:
-      delete[] data_grey;
+    case 8 | (uint8_t)PixelType::Grey:
+      delete[] data_grey_8;
+      break;
+    case 16 | (uint8_t)PixelType::RGBA:
+      delete[] data_rgba_16;
+      break;
+    case 16 | (uint8_t)PixelType::RGB:
+      delete[] data_rgb_16;
+      break;
+    case 16 | (uint8_t)PixelType::Grey:
+      delete[] data_grey_16;
+      break;
+    case 32 | (uint8_t)PixelType::RGBA:
+      delete[] data_rgba_32;
+      break;
+    case 32 | (uint8_t)PixelType::RGB:
+      delete[] data_rgb_32;
+      break;
+    case 32 | (uint8_t)PixelType::Grey:
+      delete[] data_grey_32;
       break;
     default:
       CHECK(false);
   }
 }
 
-Texture::pixel_rgba* Texture::GetDataAsRGBA() const { return data_rgba; }
-
-Texture::pixel_rgb* Texture::GetDataAsRGB() const { return data_rgb; }
-
-Texture::pixel_grey* Texture::GetDataAsGrey() const { return data_grey; }
+Texture::pixel_rgba_8* Texture::GetDataAsRGBA8() const { return data_rgba_8; }
+Texture::pixel_rgb_8* Texture::GetDataAsRGB8() const { return data_rgb_8; }
+Texture::pixel_grey_8* Texture::GetDataAsGrey8() const { return data_grey_8; }
+Texture::pixel_rgba_16* Texture::GetDataAsRGBA16() const {
+  return data_rgba_16;
+}
+Texture::pixel_rgb_16* Texture::GetDataAsRGB16() const { return data_rgb_16; }
+Texture::pixel_grey_16* Texture::GetDataAsGrey16() const {
+  return data_grey_16;
+}
+Texture::pixel_rgba_32* Texture::GetDataAsRGBA32() const {
+  return data_rgba_32;
+}
+Texture::pixel_rgb_32* Texture::GetDataAsRGB32() const { return data_rgb_32; }
+Texture::pixel_grey_32* Texture::GetDataAsGrey32() const {
+  return data_grey_32;
+}
 
 uint32_t Texture::GetWidth() const { return width; }
 
 uint32_t Texture::GetHeight() const { return height; }
 
-Texture::PixelType Texture::GetType() const { return type; }
+Texture::PixelType Texture::GetPixelType() const { return pixel_type; }
+
+unsigned int Texture::GetBitDepth() const { return bit_depth; }
 
 GLuint ToGL(RenderableTexture::WrapMode mode) {
   switch (mode) {
@@ -90,22 +159,56 @@ absl::StatusOr<std::shared_ptr<RenderableTexture>> RenderableTexture::Load(
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
                   ToGL(details.mag_filter, details.use_mipmaps));
 
-  switch (source_data->GetType()) {
-    case Texture::PixelType::RGBA:
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texture->width, texture->height,
-                   0, GL_RGBA, GL_UNSIGNED_BYTE, source_data->GetDataAsRGBA());
+  switch (source_data->GetBitDepth() | (uint8_t)source_data->GetPixelType()) {
+    case 8 | (uint8_t)Texture::PixelType::RGBA:
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8UI, texture->width,
+                   texture->height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+                   source_data->GetDataAsRGBA8());
       break;
-    case Texture::PixelType::RGB:
+    case 8 | (uint8_t)Texture::PixelType::RGB:
       glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, texture->width, texture->height, 0,
-                   GL_RGB, GL_UNSIGNED_BYTE, source_data->GetDataAsRGB());
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8UI, texture->width, texture->height,
+                   0, GL_RGB, GL_UNSIGNED_BYTE, source_data->GetDataAsRGB8());
       glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
       break;
-    case Texture::PixelType::Grey:
+    case 8 | (uint8_t)Texture::PixelType::Grey:
       glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, texture->width, texture->height, 0,
-                   GL_RED, GL_UNSIGNED_BYTE, source_data->GetDataAsGrey());
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, texture->width, texture->height,
+                   0, GL_RED, GL_UNSIGNED_BYTE, source_data->GetDataAsGrey8());
       glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+      break;
+    case 16 | (uint8_t)Texture::PixelType::RGBA:
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16UI, texture->width,
+                   texture->height, 0, GL_RGBA, GL_UNSIGNED_SHORT,
+                   source_data->GetDataAsRGBA16());
+      break;
+    case 16 | (uint8_t)Texture::PixelType::RGB:
+      glPixelStorei(GL_UNPACK_ALIGNMENT, 2);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16UI, texture->width,
+                   texture->height, 0, GL_RGB, GL_UNSIGNED_SHORT,
+                   source_data->GetDataAsRGB16());
+      glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+      break;
+    case 16 | (uint8_t)Texture::PixelType::Grey:
+      glPixelStorei(GL_UNPACK_ALIGNMENT, 2);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_R16UI, texture->width, texture->height,
+                   0, GL_RED, GL_UNSIGNED_SHORT,
+                   source_data->GetDataAsGrey16());
+      glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+      break;
+    case 32 | (uint8_t)Texture::PixelType::RGBA:
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32UI, texture->width,
+                   texture->height, 0, GL_RGBA, GL_UNSIGNED_INT,
+                   source_data->GetDataAsRGBA32());
+      break;
+    case 32 | (uint8_t)Texture::PixelType::RGB:
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32UI, texture->width,
+                   texture->height, 0, GL_RGB, GL_UNSIGNED_INT,
+                   source_data->GetDataAsRGB32());
+      break;
+    case 32 | (uint8_t)Texture::PixelType::Grey:
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, texture->width, texture->height,
+                   0, GL_RED, GL_UNSIGNED_INT, source_data->GetDataAsGrey32());
       break;
     default:
       CHECK(false);

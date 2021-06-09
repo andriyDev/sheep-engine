@@ -12,32 +12,59 @@
 
 class Texture {
  public:
-  enum class PixelType { RGBA, RGB, Grey };
+  enum class PixelType : uint8_t { RGBA, RGB, Grey };
 
-  Texture(PixelType type_, uint32_t width_, uint32_t height_);
+  Texture(PixelType type_, unsigned int bit_depth_, uint32_t width_,
+          uint32_t height_);
   ~Texture();
 
-  using pixel_rgba = glm::tvec4<unsigned char>;
-  using pixel_rgb = glm::tvec3<unsigned char>;
-  using pixel_grey = unsigned char;
+  using pixel_rgba_8 = glm::tvec4<uint8_t>;
+  using pixel_rgb_8 = glm::tvec3<uint8_t>;
+  using pixel_grey_8 = uint8_t;
 
-  pixel_rgba* GetDataAsRGBA() const;
-  pixel_rgb* GetDataAsRGB() const;
-  pixel_grey* GetDataAsGrey() const;
+  using pixel_rgba_16 = glm::tvec4<uint16_t>;
+  using pixel_rgb_16 = glm::tvec3<uint16_t>;
+  using pixel_grey_16 = uint16_t;
+
+  using pixel_rgba_32 = glm::tvec4<uint32_t>;
+  using pixel_rgb_32 = glm::tvec3<uint32_t>;
+  using pixel_grey_32 = uint32_t;
+
+  pixel_rgba_8* GetDataAsRGBA8() const;
+  pixel_rgb_8* GetDataAsRGB8() const;
+  pixel_grey_8* GetDataAsGrey8() const;
+
+  pixel_rgba_16* GetDataAsRGBA16() const;
+  pixel_rgb_16* GetDataAsRGB16() const;
+  pixel_grey_16* GetDataAsGrey16() const;
+
+  pixel_rgba_32* GetDataAsRGBA32() const;
+  pixel_rgb_32* GetDataAsRGB32() const;
+  pixel_grey_32* GetDataAsGrey32() const;
 
   uint32_t GetWidth() const;
   uint32_t GetHeight() const;
-  PixelType GetType() const;
+  PixelType GetPixelType() const;
+  unsigned int GetBitDepth() const;
 
  private:
   uint32_t width;
   uint32_t height;
-  PixelType type;
+  PixelType pixel_type;
+  unsigned int bit_depth;
 
   union {
-    pixel_rgba* data_rgba;
-    pixel_rgb* data_rgb;
-    pixel_grey* data_grey;
+    pixel_rgba_8* data_rgba_8;
+    pixel_rgb_8* data_rgb_8;
+    pixel_grey_8* data_grey_8;
+
+    pixel_rgba_16* data_rgba_16;
+    pixel_rgb_16* data_rgb_16;
+    pixel_grey_16* data_grey_16;
+
+    pixel_rgba_32* data_rgba_32;
+    pixel_rgb_32* data_rgb_32;
+    pixel_grey_32* data_grey_32;
   };
 };
 
