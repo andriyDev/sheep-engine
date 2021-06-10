@@ -19,6 +19,7 @@
 #include "resources/mesh_formats/obj_mesh.h"
 #include "resources/resource.h"
 #include "resources/shader.h"
+#include "resources/texture_formats/png_texture.h"
 #include "systems/input_system.h"
 #include "systems/render_system.h"
 #include "utility/cached.h"
@@ -36,21 +37,26 @@ std::shared_ptr<Mesh> triangleMesh() {
 #define VERTEX_SHADER                            \
   "#version 330 core\n"                          \
   "layout(location = 0) in vec3 position;\n"     \
+  "layout(location = 1) in vec2 vert_uv;\n"      \
   "layout(location = 2) in vec3 normal;\n"       \
   "uniform mat4 MVP;\n"                          \
   "out vec3 normal_frag;\n"                      \
+  "out vec2 uv;\n"                               \
   "void main() {\n"                              \
   "  gl_Position = MVP * vec4(position, 1.0);\n" \
   "  normal_frag = normal;\n"                    \
+  "  uv = vert_uv;\n"                            \
   "}\n"
-#define FRAGMENT_SHADER                                                        \
-  "#version 330 core\n"                                                        \
-  "in vec3 normal_frag;\n"                                                     \
-  "out vec3 color;\n"                                                          \
-  "void main() {\n"                                                            \
-  "  vec3 sun_dir = normalize(vec3(1,1,1));\n"                                 \
-  "  color = vec3(1,1,1) * clamp(dot(normal_frag, sun_dir) * 0.5 + 0.5, 0.0, " \
-  "1.0);\n"                                                                    \
+#define FRAGMENT_SHADER                                                \
+  "#version 330 core\n"                                                \
+  "in vec2 uv;\n"                                                      \
+  "in vec3 normal_frag;\n"                                             \
+  "out vec3 color;\n"                                                  \
+  "uniform sampler2D tex;\n"                                           \
+  "void main() {\n"                                                    \
+  "  vec3 sun_dir = normalize(vec3(1,1,1));\n"                         \
+  "  color = vec3(0, texture(tex, uv).g, 0) * clamp(dot(normal_frag, " \
+  "sun_dir) * 0.5 + 0.5, 0.0, 1.0);\n"                                 \
   "}\n"
 
 absl::Status initResources() {
@@ -76,6 +82,13 @@ absl::Status initResources() {
       "obj_mesh", ObjModel::LoadMesh, {"obj", "Blob"}));
   RETURN_IF_ERROR(
       ResourceLoader::Get().Add<RenderableMesh>("obj_rmesh", {"obj_mesh"}));
+  RETURN_IF_ERROR(ResourceLoader::Get().Add<Texture>(
+      "texture", PngTexture::Load, {"col_smooth_16.png"}));
+  RETURN_IF_ERROR(ResourceLoader::Get().Add<RenderableTexture>(
+      "rtexture", {"texture", RenderableTexture::WrapMode::Repeat,
+                   RenderableTexture::WrapMode::Repeat,
+                   RenderableTexture::FilterMode::Linear,
+                   RenderableTexture::FilterMode::Linear, false}));
   return absl::OkStatus();
 }
 
@@ -233,6 +246,7 @@ int main(int argc, char* argv[]) {
   world->CreateEmptyRoot();
   world->AddSystem(std::make_shared<PlayerControlSystem>());
 
+  std::shared_ptr<RenderableTexture> texture;
   std::shared_ptr<Transform> camera_pivot;
   std::shared_ptr<Camera> camera;
   {
@@ -245,6 +259,18 @@ int main(int argc, char* argv[]) {
       LOG(FATAL) << "Failed to load \"main_program\": " << material.status();
       return 1;
     }
+    (*material)->Use();
+    glUniform1i((*material)->GetUniformLocation("tex"), 0);
+
+    const absl::StatusOr<std::shared_ptr<RenderableTexture>> texture_status =
+        ResourceLoader::Get().Load<RenderableTexture>("rtexture");
+    if (!texture_status.ok()) {
+      LOG(FATAL) << "Failed to load \"rtexture\": " << texture_status.status();
+      return 1;
+    }
+    texture = *texture_status;
+    texture->Use(0);
+
     const absl::StatusOr<std::shared_ptr<RenderableMesh>> mesh =
         ResourceLoader::Get().Load<RenderableMesh>("obj_rmesh");
     if (!mesh.ok()) {

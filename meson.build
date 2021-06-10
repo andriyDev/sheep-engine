@@ -11,6 +11,7 @@ gl_dep = dependency('gl')
 glew_dep = dependency('glew')
 glfw_dep = dependency('glfw3', modules: [ 'glfw' ])
 glog_dep = dependency('glog')
+png_dep = dependency('PNG', modules: [ 'PNG::PNG' ])
 
 inc = include_directories('include/')
 
@@ -27,6 +28,7 @@ executable('sheep', [
   'src/resources/resource.cpp',
   'src/resources/shader.cpp',
   'src/resources/texture.cpp',
+  'src/resources/texture_formats/png_texture.cpp',
   'src/systems/input_system.cpp',
   'src/systems/render_system.cpp',
   'src/systems/super_system.cpp',
@@ -39,4 +41,5 @@ executable('sheep', [
   glew_dep,
   glfw_dep,
   glog_dep,
+  png_dep,
 ], include_directories: inc)
