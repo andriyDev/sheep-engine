@@ -76,13 +76,13 @@ class RenderableTexture {
   struct Details {
     ResourceHandle<Texture> texture;
 
-    WrapMode x_wrap;
-    WrapMode y_wrap;
+    WrapMode x_wrap = WrapMode::Repeat;
+    WrapMode y_wrap = WrapMode::Repeat;
 
-    FilterMode min_filter;
-    FilterMode mag_filter;
+    FilterMode min_filter = FilterMode::Linear;
+    FilterMode mag_filter = FilterMode::Linear;
 
-    bool use_mipmaps;
+    bool use_mipmaps = true;
   };
   using detail_type = Details;
 
