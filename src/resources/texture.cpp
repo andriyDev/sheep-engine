@@ -161,39 +161,36 @@ absl::StatusOr<std::shared_ptr<RenderableTexture>> RenderableTexture::Load(
 
   switch (source_data->GetBitDepth() | (uint8_t)source_data->GetPixelType()) {
     case 8 | (uint8_t)Texture::PixelType::RGBA:
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8UI, texture->width,
-                   texture->height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
-                   source_data->GetDataAsRGBA8());
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, texture->width, texture->height,
+                   0, GL_RGBA, GL_UNSIGNED_BYTE, source_data->GetDataAsRGBA8());
       break;
     case 8 | (uint8_t)Texture::PixelType::RGB:
       glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8UI, texture->width, texture->height,
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, texture->width, texture->height,
                    0, GL_RGB, GL_UNSIGNED_BYTE, source_data->GetDataAsRGB8());
       glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
       break;
     case 8 | (uint8_t)Texture::PixelType::Grey:
       glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, texture->width, texture->height,
-                   0, GL_RED, GL_UNSIGNED_BYTE, source_data->GetDataAsGrey8());
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, texture->width, texture->height, 0,
+                   GL_RED, GL_UNSIGNED_BYTE, source_data->GetDataAsGrey8());
       glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
       break;
     case 16 | (uint8_t)Texture::PixelType::RGBA:
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16UI, texture->width,
-                   texture->height, 0, GL_RGBA, GL_UNSIGNED_SHORT,
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16, texture->width, texture->height,
+                   0, GL_RGBA, GL_UNSIGNED_SHORT,
                    source_data->GetDataAsRGBA16());
       break;
     case 16 | (uint8_t)Texture::PixelType::RGB:
       glPixelStorei(GL_UNPACK_ALIGNMENT, 2);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16UI, texture->width,
-                   texture->height, 0, GL_RGB, GL_UNSIGNED_SHORT,
-                   source_data->GetDataAsRGB16());
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16, texture->width, texture->height,
+                   0, GL_RGB, GL_UNSIGNED_SHORT, source_data->GetDataAsRGB16());
       glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
       break;
     case 16 | (uint8_t)Texture::PixelType::Grey:
       glPixelStorei(GL_UNPACK_ALIGNMENT, 2);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_R16UI, texture->width, texture->height,
-                   0, GL_RED, GL_UNSIGNED_SHORT,
-                   source_data->GetDataAsGrey16());
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_R16, texture->width, texture->height, 0,
+                   GL_RED, GL_UNSIGNED_SHORT, source_data->GetDataAsGrey16());
       glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
       break;
     case 32 | (uint8_t)Texture::PixelType::RGBA:
@@ -202,7 +199,7 @@ absl::StatusOr<std::shared_ptr<RenderableTexture>> RenderableTexture::Load(
                    source_data->GetDataAsRGBA32());
       break;
     case 32 | (uint8_t)Texture::PixelType::RGB:
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32UI, texture->width,
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32UI, texture->width,
                    texture->height, 0, GL_RGB, GL_UNSIGNED_INT,
                    source_data->GetDataAsRGB32());
       break;
@@ -213,6 +210,7 @@ absl::StatusOr<std::shared_ptr<RenderableTexture>> RenderableTexture::Load(
     default:
       CHECK(false);
   }
+  CHECK_EQ(glGetError(), 0);
 
   if (details.use_mipmaps) {
     glGenerateMipmap(GL_TEXTURE_2D);
