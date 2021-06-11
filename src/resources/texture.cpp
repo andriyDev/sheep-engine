@@ -194,17 +194,16 @@ absl::StatusOr<std::shared_ptr<RenderableTexture>> RenderableTexture::Load(
       glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
       break;
     case 32 | (uint8_t)Texture::PixelType::RGBA:
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32UI, texture->width,
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, texture->width,
                    texture->height, 0, GL_RGBA, GL_UNSIGNED_INT,
                    source_data->GetDataAsRGBA32());
       break;
     case 32 | (uint8_t)Texture::PixelType::RGB:
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32UI, texture->width,
-                   texture->height, 0, GL_RGB, GL_UNSIGNED_INT,
-                   source_data->GetDataAsRGB32());
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, texture->width, texture->height,
+                   0, GL_RGB, GL_UNSIGNED_INT, source_data->GetDataAsRGB32());
       break;
     case 32 | (uint8_t)Texture::PixelType::Grey:
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, texture->width, texture->height,
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, texture->width, texture->height,
                    0, GL_RED, GL_UNSIGNED_INT, source_data->GetDataAsGrey32());
       break;
     default:
