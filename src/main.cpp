@@ -34,6 +34,17 @@ std::shared_ptr<Mesh> triangleMesh() {
   return source_mesh;
 }
 
+std::shared_ptr<Mesh> squareMesh() {
+  std::shared_ptr<Mesh> source_mesh(new Mesh());
+  source_mesh->vertices = {
+      {{glm::vec3(0, 0, 0), glm::vec2(0, 0), glm::vec3(0, 0, -1)},
+       {glm::vec3(1, 0, 0), glm::vec2(1, 0), glm::vec3(0, 0, -1)},
+       {glm::vec3(1, 1, 0), glm::vec2(1, 1), glm::vec3(0, 0, -1)},
+       {glm::vec3(0, 1, 0), glm::vec2(0, 1), glm::vec3(0, 0, -1)}}};
+  source_mesh->triangles = {{0, 1, 2}, {2, 3, 0}};
+  return source_mesh;
+}
+
 #define VERTEX_SHADER                            \
   "#version 330 core\n"                          \
   "layout(location = 0) in vec3 position;\n"     \
@@ -47,16 +58,15 @@ std::shared_ptr<Mesh> triangleMesh() {
   "  normal_frag = normal;\n"                    \
   "  uv = vert_uv;\n"                            \
   "}\n"
-#define FRAGMENT_SHADER                                                \
-  "#version 330 core\n"                                                \
-  "in vec2 uv;\n"                                                      \
-  "in vec3 normal_frag;\n"                                             \
-  "out vec3 color;\n"                                                  \
-  "uniform sampler2D tex;\n"                                           \
-  "void main() {\n"                                                    \
-  "  vec3 sun_dir = normalize(vec3(1,1,1));\n"                         \
-  "  color = vec3(0, texture(tex, uv).g, 0) * clamp(dot(normal_frag, " \
-  "sun_dir) * 0.5 + 0.5, 0.0, 1.0);\n"                                 \
+#define FRAGMENT_SHADER                         \
+  "#version 330 core\n"                         \
+  "in vec2 uv;\n"                               \
+  "in vec3 normal_frag;\n"                      \
+  "out vec3 color;\n"                           \
+  "uniform sampler2D tex;\n"                    \
+  "void main() {\n"                             \
+  "  vec3 sun_dir = normalize(vec3(1,1,1));\n"  \
+  "  color = vec3(0, texture(tex, uv).r, 0);\n" \
   "}\n"
 
 absl::Status initResources() {
@@ -75,6 +85,10 @@ absl::Status initResources() {
       ResourceLoader::Get().Add<Mesh>("triangle_mesh", triangleMesh));
   RETURN_IF_ERROR(ResourceLoader::Get().Add<RenderableMesh>("triangle_rmesh",
                                                             {"triangle_mesh"}));
+
+  RETURN_IF_ERROR(ResourceLoader::Get().Add<Mesh>("square_mesh", squareMesh));
+  RETURN_IF_ERROR(ResourceLoader::Get().Add<RenderableMesh>("square_rmesh",
+                                                            {"square_mesh"}));
 
   RETURN_IF_ERROR(
       ResourceLoader::Get().Add<ObjModel>("obj", {"test_mesh.obj"}));
@@ -272,9 +286,9 @@ int main(int argc, char* argv[]) {
     texture->Use(0);
 
     const absl::StatusOr<std::shared_ptr<RenderableMesh>> mesh =
-        ResourceLoader::Get().Load<RenderableMesh>("obj_rmesh");
+        ResourceLoader::Get().Load<RenderableMesh>("square_rmesh");
     if (!mesh.ok()) {
-      LOG(FATAL) << "Failed to load \"obj_rmesh\": " << mesh.status();
+      LOG(FATAL) << "Failed to load \"square_rmesh\": " << mesh.status();
       return 1;
     }
     mesh_renderer->mesh = *mesh;
