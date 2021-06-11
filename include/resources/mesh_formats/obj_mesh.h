@@ -7,6 +7,7 @@
 #include <string>
 
 #include "resources/mesh.h"
+#include "utility/resource_handle.h"
 
 struct ObjModel {
   struct Details {
@@ -17,7 +18,7 @@ struct ObjModel {
   static absl::StatusOr<std::shared_ptr<ObjModel>> Load(const Details& details);
 
   struct MeshDetails {
-    std::string obj_model;
+    ResourceHandle<ObjModel> obj_model;
     std::string name;
   };
   static absl::StatusOr<std::shared_ptr<Mesh>> LoadMesh(

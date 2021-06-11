@@ -336,12 +336,11 @@ absl::StatusOr<std::shared_ptr<ObjModel>> ObjModel::Load(
 absl::StatusOr<std::shared_ptr<Mesh>> ObjModel::LoadMesh(
     const MeshDetails& details) {
   ASSIGN_OR_RETURN(const std::shared_ptr<ObjModel> model,
-                   ResourceLoader::Get().Load<ObjModel>(details.obj_model));
+                   details.obj_model.Get());
   const auto mesh_it = model->meshes.find(details.name);
   if (mesh_it == model->meshes.end()) {
     return absl::NotFoundError(
-        STATUS_MESSAGE("No mesh named \"" << details.name << "\" in OBJ file \""
-                                          << details.obj_model << "\""));
+        STATUS_MESSAGE("No mesh named \"" << details.name << "\""));
   }
   return mesh_it->second;
 }
