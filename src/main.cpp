@@ -49,7 +49,7 @@ std::shared_ptr<Mesh> squareMesh() {
   "#version 330 core\n"                          \
   "layout(location = 0) in vec3 position;\n"     \
   "layout(location = 1) in vec2 vert_uv;\n"      \
-  "layout(location = 2) in vec3 normal;\n"       \
+  "layout(location = 3) in vec3 normal;\n"       \
   "uniform mat4 MVP;\n"                          \
   "out vec3 normal_frag;\n"                      \
   "out vec2 uv;\n"                               \

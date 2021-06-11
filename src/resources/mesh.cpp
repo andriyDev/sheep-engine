@@ -16,7 +16,7 @@ absl::StatusOr<std::shared_ptr<RenderableMesh>> RenderableMesh::Load(
         "Source mesh contains both large- and small-indexed triangles.");
   }
   std::shared_ptr<RenderableMesh> new_mesh(new RenderableMesh());
-  new_mesh->vertex_attribute_count = 5;
+  new_mesh->vertex_attribute_count = 6;
   new_mesh->use_small_indexing = source_mesh->triangles.size() == 0;
   new_mesh->elements =
       (new_mesh->use_small_indexing ? source_mesh->small_triangles.size()
@@ -37,10 +37,12 @@ absl::StatusOr<std::shared_ptr<RenderableMesh>> RenderableMesh::Load(
   glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Mesh::Vertex),
                         (void*)offsetof(Mesh::Vertex, texCoord));
   glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Mesh::Vertex),
-                        (void*)offsetof(Mesh::Vertex, normal));
+                        (void*)offsetof(Mesh::Vertex, colour));
   glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Mesh::Vertex),
-                        (void*)offsetof(Mesh::Vertex, tangent));
+                        (void*)offsetof(Mesh::Vertex, normal));
   glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Mesh::Vertex),
+                        (void*)offsetof(Mesh::Vertex, tangent));
+  glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(Mesh::Vertex),
                         (void*)offsetof(Mesh::Vertex, bitangent));
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, new_mesh->buffers[1]);
