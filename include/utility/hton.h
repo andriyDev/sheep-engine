@@ -60,9 +60,21 @@ inline uint16_t htobs(uint16_t value) {
   }
 }
 
+inline float htobf(float value) {
+  union {
+    float fval;
+    uint32_t ival;
+  };
+  fval = value;
+  ival = htobl(ival);
+  return fval;
+}
+
 inline uint32_t btohl(uint32_t value) { return htobl(value); }
 
 inline uint16_t btohs(uint16_t value) { return htobs(value); }
+
+inline float btohf(float value) { return htobf(value); }
 
 // ltoh, htol -> Host to little endian
 
@@ -82,6 +94,18 @@ inline uint16_t htols(uint16_t value) {
   }
 }
 
+inline float htolf(float value) {
+  union {
+    float fval;
+    uint32_t ival;
+  };
+  fval = value;
+  ival = htoll(ival);
+  return fval;
+}
+
 inline uint32_t ltohl(uint32_t value) { return htoll(value); }
 
 inline uint16_t ltohs(uint16_t value) { return htols(value); }
+
+inline float ltohf(float value) { return htolf(value); }
