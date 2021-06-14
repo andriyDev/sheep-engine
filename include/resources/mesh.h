@@ -49,9 +49,11 @@ class RenderableMesh {
   void Draw();
 
  private:
+  enum class Indexing { None, Small, Large };
+
   std::vector<GLuint> buffers;
   GLuint vao = 0;
   unsigned int elements;
   unsigned int vertex_attribute_count;
-  bool use_small_indexing = false;
+  Indexing indexing = Indexing::None;
 };

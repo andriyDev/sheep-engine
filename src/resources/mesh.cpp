@@ -17,16 +17,24 @@ absl::StatusOr<std::shared_ptr<RenderableMesh>> RenderableMesh::Load(
   }
   std::shared_ptr<RenderableMesh> new_mesh(new RenderableMesh());
   new_mesh->vertex_attribute_count = 6;
-  new_mesh->use_small_indexing = source_mesh->triangles.size() == 0;
-  new_mesh->elements =
-      (new_mesh->use_small_indexing ? source_mesh->small_triangles.size()
-                                    : source_mesh->triangles.size()) *
-      3;
-  new_mesh->buffers.resize(2);
+  if (source_mesh->triangles.size() == 0 &&
+      source_mesh->small_triangles.size() == 0) {
+    new_mesh->indexing = Indexing::None;
+    new_mesh->elements = source_mesh->vertices.size();
+    new_mesh->buffers.resize(1);
+  } else {
+    new_mesh->indexing =
+        source_mesh->triangles.size() > 0 ? Indexing::Large : Indexing::Small;
+    new_mesh->elements = (new_mesh->indexing == Indexing::Large
+                              ? source_mesh->triangles.size()
+                              : source_mesh->small_triangles.size()) *
+                         3;
+    new_mesh->buffers.resize(2);
+  }
 
   glGenVertexArrays(1, &new_mesh->vao);
   glBindVertexArray(new_mesh->vao);
-  glGenBuffers(2, new_mesh->buffers.data());
+  glGenBuffers(new_mesh->buffers.size(), new_mesh->buffers.data());
   glBindBuffer(GL_ARRAY_BUFFER, new_mesh->buffers[0]);
   glBufferData(GL_ARRAY_BUFFER,
                sizeof(Mesh::Vertex) * source_mesh->vertices.size(),
@@ -45,16 +53,18 @@ absl::StatusOr<std::shared_ptr<RenderableMesh>> RenderableMesh::Load(
   glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(Mesh::Vertex),
                         (void*)offsetof(Mesh::Vertex, bitangent));
 
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, new_mesh->buffers[1]);
-  if (new_mesh->use_small_indexing) {
-    glBufferData(
-        GL_ELEMENT_ARRAY_BUFFER,
-        sizeof(Mesh::SmallTriangle) * source_mesh->small_triangles.size(),
-        source_mesh->small_triangles.data(), GL_STATIC_DRAW);
-  } else {
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                 sizeof(Mesh::Triangle) * source_mesh->triangles.size(),
-                 source_mesh->triangles.data(), GL_STATIC_DRAW);
+  if (new_mesh->indexing != Indexing::None) {
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, new_mesh->buffers[1]);
+    if (new_mesh->indexing == Indexing::Small) {
+      glBufferData(
+          GL_ELEMENT_ARRAY_BUFFER,
+          sizeof(Mesh::SmallTriangle) * source_mesh->small_triangles.size(),
+          source_mesh->small_triangles.data(), GL_STATIC_DRAW);
+    } else {
+      glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                   sizeof(Mesh::Triangle) * source_mesh->triangles.size(),
+                   source_mesh->triangles.data(), GL_STATIC_DRAW);
+    }
   }
   return new_mesh;
 }
@@ -68,9 +78,14 @@ void RenderableMesh::Draw() {
   for (unsigned int i = 0; i < vertex_attribute_count; i++) {
     glEnableVertexAttribArray(i);
   }
-  glDrawElements(GL_TRIANGLES, elements,
-                 use_small_indexing ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT,
-                 (void*)0);
+  if (indexing == Indexing::None) {
+    glDrawArrays(GL_TRIANGLES, 0, elements);
+  } else {
+    glDrawElements(
+        GL_TRIANGLES, elements,
+        indexing == Indexing::Small ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT,
+        (void*)0);
+  }
   for (unsigned int i = 0; i < vertex_attribute_count; i++) {
     glDisableVertexAttribArray(i);
   }
