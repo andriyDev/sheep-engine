@@ -16,6 +16,7 @@
 #include "nodes/mesh_renderer.h"
 #include "nodes/transform.h"
 #include "resources/mesh.h"
+#include "resources/mesh_formats/gltf_mesh.h"
 #include "resources/mesh_formats/obj_mesh.h"
 #include "resources/resource.h"
 #include "resources/shader.h"
@@ -97,12 +98,20 @@ absl::Status initResources() {
   RETURN_IF_ERROR(
       ResourceLoader::Get().Add<RenderableMesh>("obj_rmesh", {"obj_mesh"}));
   RETURN_IF_ERROR(ResourceLoader::Get().Add<Texture>(
-      "texture", PngTexture::Load, {"col_smooth_16.png"}));
+      "texture", PngTexture::Load, {"col_smooth_8.png"}));
   RETURN_IF_ERROR(ResourceLoader::Get().Add<RenderableTexture>(
       "rtexture", {"texture", RenderableTexture::WrapMode::Repeat,
                    RenderableTexture::WrapMode::Repeat,
                    RenderableTexture::FilterMode::Linear,
                    RenderableTexture::FilterMode::Linear, false}));
+
+  RETURN_IF_ERROR(
+      ResourceLoader::Get().Add<GltfModel>("gltf_model", {"gltf.gltf"}));
+  RETURN_IF_ERROR(ResourceLoader::Get().Add<Mesh>(
+      "gltf_mesh", GltfModel::LoadMesh, {"gltf_model", "Cube", 0}));
+  RETURN_IF_ERROR(
+      ResourceLoader::Get().Add<RenderableMesh>("gltf_rmesh", {"gltf_mesh"}));
+
   return absl::OkStatus();
 }
 
@@ -286,9 +295,9 @@ int main(int argc, char* argv[]) {
     texture->Use(0);
 
     const absl::StatusOr<std::shared_ptr<RenderableMesh>> mesh =
-        ResourceLoader::Get().Load<RenderableMesh>("square_rmesh");
+        ResourceLoader::Get().Load<RenderableMesh>("gltf_rmesh");
     if (!mesh.ok()) {
-      LOG(FATAL) << "Failed to load \"square_rmesh\": " << mesh.status();
+      LOG(FATAL) << "Failed to load \"gltf_rmesh\": " << mesh.status();
       return 1;
     }
     mesh_renderer->mesh = *mesh;
