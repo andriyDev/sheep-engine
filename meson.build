@@ -11,6 +11,7 @@ gl_dep = dependency('gl')
 glew_dep = dependency('glew')
 glfw_dep = dependency('glfw3', modules: [ 'glfw' ])
 glog_dep = dependency('glog')
+json_dep = dependency('nlohmann_json')
 png_dep = dependency('PNG', modules: [ 'PNG::PNG' ])
 
 inc = include_directories('include/')
@@ -42,5 +43,6 @@ executable('sheep', [
   glew_dep,
   glfw_dep,
   glog_dep,
+  json_dep,
   png_dep,
 ], include_directories: inc)
