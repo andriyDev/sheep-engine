@@ -4,7 +4,7 @@
 #include <memory>
 
 #include "nodes/transform.h"
-#include "resources/mesh.h"
+#include "resources/renderable_mesh.h"
 #include "resources/shader.h"
 #include "systems/render_system.h"
 

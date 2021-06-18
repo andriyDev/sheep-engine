@@ -1,5 +1,5 @@
 
-#include "resources/mesh.h"
+#include "resources/renderable_mesh.h"
 
 #include <memory>
 

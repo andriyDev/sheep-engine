@@ -1,6 +1,7 @@
 
 #include "resources/mesh_formats/gltf_mesh.h"
 
+#include <GL/glew.h>
 #include <absl/strings/string_view.h>
 #include <glog/logging.h>
 
