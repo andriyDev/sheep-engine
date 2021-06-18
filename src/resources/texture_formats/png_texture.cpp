@@ -54,9 +54,9 @@ absl::StatusOr<std::shared_ptr<Texture>> PngTexture::Load(
     png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
   });
 
-  if (endian::native == endian::little) {
-    png_set_swap(png_ptr);
-  }
+  // TODO: Figure out why the default is entirely flipped.
+  png_set_bgr(png_ptr);
+  png_set_swap_alpha(png_ptr);
 
   if (setjmp(png_jmpbuf(png_ptr))) {
     return absl::InternalError("libpng failure.");
