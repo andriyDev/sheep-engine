@@ -1,6 +1,7 @@
 
 #include "resources/mesh_formats/gltf_mesh.h"
 
+#include <absl/strings/string_view.h>
 #include <glog/logging.h>
 
 #include <fstream>
@@ -579,6 +580,123 @@ absl::StatusOr<Accessor> ParseAccessor(const nlohmann::json& accessor_json) {
   return accessor;
 }
 
+char ConvertBase64Character(char c) {
+  if ('A' <= c && c <= 'Z') {
+    return c - 'A';
+  } else if ('a' <= c && c <= 'z') {
+    return c - 'a' + 26;
+  } else if ('0' <= c && c <= '9') {
+    return c - '0' + 52;
+  } else if (c == '+') {
+    return 62;
+  } else if (c == '/') {
+    return 63;
+  } else {
+    // We use 64 as a cheap sentinel value.
+    return 64;
+  }
+}
+
+absl::Status FillBufferWithBase64(absl::string_view base64_data,
+                                  std::vector<uint8_t>& out_data) {
+  unsigned int bits = base64_data.length() * 6;
+  out_data.resize(bits / 8 + (bits % 8 != 0));
+  unsigned int i;
+  unsigned int j;
+  for (i = 0, j = 0; i < base64_data.length() - 3; i += 4, j += 3) {
+    char a = ConvertBase64Character(base64_data[i]),
+         b = ConvertBase64Character(base64_data[i + 1]),
+         c = ConvertBase64Character(base64_data[i + 2]),
+         d = ConvertBase64Character(base64_data[i + 3]);
+    if (a >= 64 || b >= 64 || c >= 64 || d >= 64) {
+      return absl::InvalidArgumentError(STATUS_MESSAGE(
+          "Unable to convert characters \""
+          << base64_data[i] << base64_data[i + 1] << base64_data[i + 2]
+          << base64_data[i + 3] << "\" as base64"));
+    }
+    union {
+      uint32_t merged;
+      uint8_t split[4];
+    };
+    merged = ((uint32_t)a << 18) | ((uint32_t)b << 12) | ((uint32_t)c << 6) |
+             ((uint32_t)d);
+    if constexpr (endian::native == endian::little) {
+      out_data[j] = split[2];
+      out_data[j + 1] = split[1];
+      out_data[j + 2] = split[0];
+    } else {
+      out_data[j] = split[1];
+      out_data[j + 1] = split[2];
+      out_data[j + 2] = split[3];
+    }
+  }
+  if (i != base64_data.length()) {
+    unsigned int remaining_chars = base64_data.length() - i;
+    char a = ConvertBase64Character(base64_data[i]),
+         b = i + 1 < base64_data.length()
+                 ? ConvertBase64Character(base64_data[i + 1])
+                 : 0,
+         c = i + 2 < base64_data.length()
+                 ? ConvertBase64Character(base64_data[i + 2])
+                 : 0;
+    if (a >= 64 || b >= 64 || c >= 64) {
+      return absl::InvalidArgumentError(STATUS_MESSAGE(
+          "Unable to convert characters \""
+          << base64_data[i]
+          << (i + 1 < base64_data.length() ? base64_data[i + 1] : ' ')
+          << (i + 2 < base64_data.length() ? base64_data[i + 2] : ' ')
+          << " \" as base64"));
+    }
+    union {
+      uint32_t merged;
+      uint8_t split[4];
+    };
+    merged = ((uint32_t)a << 26) | ((uint32_t)b << 20) | ((uint32_t)c << 14);
+    if constexpr (endian::native == endian::little) {
+      out_data[j] = split[3];
+      out_data[j + 1] = split[2];
+      out_data[j + 2] = split[1];
+    } else {
+      out_data[j] = split[0];
+      out_data[j + 1] = split[1];
+      out_data[j + 2] = split[2];
+    }
+  }
+  return absl::OkStatus();
+}
+
+absl::Status ParseBuffer(const nlohmann::json& buffer_json,
+                         std::vector<uint8_t>& out_data) {
+  ASSIGN_OR_RETURN(unsigned int byte_len,
+                   GetUnsignedInt(buffer_json, "byteLength"));
+  ASSIGN_OR_RETURN(const std::string& uri, GetString(buffer_json, "uri"));
+  if (uri.rfind("data:", 0) == 0) {
+    // Handle data URI.
+    size_t comma_index = uri.find(',');
+    absl::string_view view = uri;
+    RETURN_IF_ERROR(FillBufferWithBase64(
+        absl::ClippedSubstr(uri, comma_index + 1), out_data));
+  } else {
+    // If it is not a data URI, assume it is a relative file.
+    std::ifstream buffer_file(uri, std::ios_base::in | std::ios_base::binary);
+    if (!buffer_file.is_open()) {
+      return absl::InvalidArgumentError(
+          STATUS_MESSAGE("Unable to read buffer file \"" << uri << "\""));
+    }
+
+    out_data.resize(byte_len);
+    buffer_file.read((char*)out_data.data(), byte_len);
+    unsigned int read_bytes = buffer_file.gcount();
+    if (read_bytes != byte_len) {
+      return absl::InvalidArgumentError(STATUS_MESSAGE(
+          "Unable to read requested byte count from Buffer file \""
+          << uri << "\". Requested " << byte_len << ", but got "
+          << read_bytes));
+    }
+  }
+  return absl::OkStatus();
+}
+
 absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
     const Details& details) {
   std::ifstream file(details.file);
@@ -607,32 +725,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
           "Invalid JSON data: buffer is not an object.");
     }
     buffers.push_back(std::vector<unsigned char>());
-
-    ASSIGN_OR_RETURN(unsigned int byte_len,
-                     GetUnsignedInt(buffer_json, "byteLength"));
-    ASSIGN_OR_RETURN(const std::string& uri, GetString(buffer_json, "uri"));
-    if (uri.rfind("data:", 0) == 0) {
-      // TODO: Handle data URIs.
-      return absl::UnimplementedError("TODO: Handle data URIs.");
-    } else {
-      // If it is not a data URI, assume it is a relative file.
-      std::ifstream buffer_file(uri, std::ios_base::in | std::ios_base::binary);
-      if (!buffer_file.is_open()) {
-        return absl::InvalidArgumentError(
-            STATUS_MESSAGE("Unable to read buffer file \"" << uri << "\""));
-      }
-
-      std::vector<unsigned char>& buffer_data = buffers.back();
-      buffer_data.resize(byte_len);
-      buffer_file.read((char*)buffer_data.data(), byte_len);
-      unsigned int read_bytes = buffer_file.gcount();
-      if (read_bytes != byte_len) {
-        return absl::InvalidArgumentError(STATUS_MESSAGE(
-            "Unable to read requested byte count from Buffer file \""
-            << uri << "\". Requested " << byte_len << ", but got "
-            << read_bytes));
-      }
-    }
+    ParseBuffer(buffer_json, buffers.back());
   }
 
   std::vector<BufferView> buffer_views;
