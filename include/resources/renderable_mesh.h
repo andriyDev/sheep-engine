@@ -5,14 +5,17 @@
 #include <absl/status/statusor.h>
 
 #include <memory>
+#include <optional>
 
 #include "resources/mesh.h"
+#include "resources/skin.h"
 #include "utility/resource_handle.h"
 
 class RenderableMesh {
  public:
   struct Details {
     ResourceHandle<Mesh> mesh;
+    std::optional<ResourceHandle<Skin>> skin;
   };
   using detail_type = Details;
 
