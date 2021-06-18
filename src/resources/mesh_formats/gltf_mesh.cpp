@@ -699,33 +699,113 @@ absl::Status ParseBuffer(const nlohmann::json& buffer_json,
 
 absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
     const Details& details) {
-  std::ifstream file(details.file);
+  std::ifstream file(details.file, std::ios_base::in | std::ios_base::binary);
   if (!file.is_open()) {
     return absl::NotFoundError(
         STATUS_MESSAGE("Unable to read file " << details.file));
   }
 
-  // TODO: Check if file is glB and handle.
-
+  std::vector<std::vector<unsigned char>> buffers;
   nlohmann::json root;
-  file >> root;
-  file.close();
+
+  union {
+    uint8_t chars[12];
+    uint32_t ints[3];
+  } header;
+  file.read((char*)header.chars, 12);
+  if (file.gcount() == 12 &&
+      absl::string_view((char*)header.chars, 4) == "glTF") {
+    header.ints[1] = ltohl(header.ints[1]);
+    header.ints[2] = ltohl(header.ints[2]);
+    if (header.ints[1] != 2) {
+      return absl::InvalidArgumentError(STATUS_MESSAGE(
+          "Bad GLB version. Expected 2, but got " << header.ints[1]));
+    }
+
+    bool parsed_json = false, parsed_buffer = false;
+    uint32_t data_read = 12;
+    while (data_read < header.ints[2]) {
+      union {
+        uint8_t chars[8];
+        uint32_t ints[2];
+      } chunk;
+      file.read((char*)chunk.chars, 8);
+      size_t read_bytes = file.gcount();
+      if (read_bytes != 8) {
+        return absl::InvalidArgumentError(STATUS_MESSAGE(
+            "Inconsistent GLB file. Expected 8 more bytes, but only got "
+            << read_bytes));
+      }
+      data_read += 8;
+      chunk.ints[0] = ltohl(chunk.ints[0]);
+      chunk.ints[1] = ltohl(chunk.ints[1]);
+      if (chunk.ints[1] == 0x4e4f534a) {
+        if (parsed_json) {
+          return absl::InvalidArgumentError(
+              "Inconsistent GLB file. Expected exactly one JSON chunk, but got "
+              "more than one.");
+        }
+        parsed_json = true;
+        std::vector<uint8_t> json_data;
+        json_data.resize(chunk.ints[0]);
+        file.read((char*)json_data.data(), chunk.ints[0]);
+        read_bytes = file.gcount();
+        if (read_bytes != chunk.ints[0]) {
+          return absl::InvalidArgumentError(STATUS_MESSAGE(
+              "Inconsistent GLB file. Expected "
+              << chunk.ints[0] << " more bytes, but only got " << read_bytes));
+        }
+        data_read += read_bytes;
+        try {
+          root = nlohmann::json::parse(json_data);
+        } catch (int err) {
+          return absl::InvalidArgumentError(
+              "Inconsistent GLB file. Failed to parse JSON chunk.");
+        }
+      } else if (chunk.ints[1] == 0x004e4942) {
+        if (parsed_buffer) {
+          return absl::InvalidArgumentError(
+              "Inconsistent GLB file. Expected at most one binary chunk, but "
+              "got more than one.");
+        }
+        parsed_buffer = true;
+        buffers.push_back(std::vector<uint8_t>());
+        buffers.back().resize(chunk.ints[0]);
+        file.read((char*)buffers.back().data(), chunk.ints[0]);
+        read_bytes = file.gcount();
+        if (read_bytes != chunk.ints[0]) {
+          return absl::InvalidArgumentError(STATUS_MESSAGE(
+              "Inconsistent GLB file. Expected "
+              << chunk.ints[0] << " more bytes, but only got " << read_bytes));
+        }
+        data_read += read_bytes;
+      }
+    }
+    if (!parsed_json) {
+      return absl::InvalidArgumentError(
+          "Inconsistent GCB file. Expected exactly one JSON chunk, but got "
+          "none.");
+    }
+    file.close();
+  } else {
+    file.seekg(0, std::ios::beg);
+    file >> root;
+    file.close();
+  }
 
   if (!root.is_object()) {
     return absl::InvalidArgumentError("Root of glTF file is not an object");
   }
 
-  std::vector<std::vector<unsigned char>> buffers;
   ASSIGN_OR_RETURN(const nlohmann::json* buffers_json_array,
                    GetArray(root, "buffers"));
-  buffers.reserve(buffers_json_array->size());
+  buffers.reserve(buffers.size() + buffers_json_array->size());
   for (const auto& buffer_json : *buffers_json_array) {
     if (!buffer_json.is_object()) {
       return absl::InvalidArgumentError(
           "Invalid JSON data: buffer is not an object.");
     }
-    buffers.push_back(std::vector<unsigned char>());
-    ParseBuffer(buffer_json, buffers.back());
+    ParseBuffer(buffer_json, buffers.emplace_back());
   }
 
   std::vector<BufferView> buffer_views;
