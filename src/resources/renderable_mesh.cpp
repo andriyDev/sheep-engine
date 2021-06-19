@@ -8,10 +8,11 @@
 
 absl::StatusOr<std::shared_ptr<RenderableMesh>> RenderableMesh::Load(
     const Details& details) {
-  ASSIGN_OR_RETURN(const std::shared_ptr<Mesh> source_mesh, details.mesh.Get());
+  ASSIGN_OR_RETURN((const std::shared_ptr<Mesh> source_mesh),
+                   details.mesh.Get());
   std::shared_ptr<Skin> source_skin;
   if (details.skin.has_value()) {
-    ASSIGN_OR_RETURN(source_skin, details.skin->Get());
+    ASSIGN_OR_RETURN((source_skin), details.skin->Get());
 
     if (source_mesh->vertices.size() != source_skin->vertices.size()) {
       return absl::FailedPreconditionError(STATUS_MESSAGE(

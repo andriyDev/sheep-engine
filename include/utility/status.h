@@ -13,7 +13,7 @@
   if (!__STATUS_NAME.ok()) {         \
     return __STATUS_NAME.status();   \
   }                                  \
-  var = std::move(*__STATUS_NAME)
+  UNPACK var = std::move(*__STATUS_NAME)
 
 #define RETURN_IF_ERROR(value)  \
   auto __STATUS_NAME = (value); \
@@ -30,3 +30,5 @@
 #define __STATUS_CONCAT(x, y) __STATUS_CONCAT_INDIRECT(x, y)
 
 #define __STATUS_NAME __STATUS_CONCAT(status_, __LINE__)
+
+#define UNPACK(...) __VA_ARGS__

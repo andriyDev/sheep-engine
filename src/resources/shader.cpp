@@ -41,7 +41,7 @@ GLuint getGLShaderType(const Shader::Type type) {
 
 absl::StatusOr<std::shared_ptr<Shader>> Shader::Load(const Details& details) {
   std::shared_ptr<Shader> shader(new Shader());
-  ASSIGN_OR_RETURN(const std::string& shader_code, getShaderCode(details));
+  ASSIGN_OR_RETURN((const std::string& shader_code), getShaderCode(details));
 
   const char* shader_source = shader_code.c_str();
 
@@ -72,12 +72,12 @@ absl::StatusOr<std::shared_ptr<Program>> Program::Load(const Details& details) {
   for (const ResourceHandle<Shader>& vertex_shader_handle :
        details.vertex_shaders) {
     shaders.push_back(nullptr);
-    ASSIGN_OR_RETURN(shaders.back(), vertex_shader_handle.Get());
+    ASSIGN_OR_RETURN((shaders.back()), vertex_shader_handle.Get());
   }
   for (const ResourceHandle<Shader>& fragment_shader_handle :
        details.fragment_shaders) {
     shaders.push_back(nullptr);
-    ASSIGN_OR_RETURN(shaders.back(), fragment_shader_handle.Get());
+    ASSIGN_OR_RETURN((shaders.back()), fragment_shader_handle.Get());
   }
   std::shared_ptr<Program> program(new Program());
   program->id = glCreateProgram();

@@ -23,7 +23,8 @@ absl::StatusOr<const nlohmann::json*> GetElementByKey(
 
 absl::StatusOr<const nlohmann::json*> GetObject(const nlohmann::json& json,
                                                 const std::string& key) {
-  ASSIGN_OR_RETURN(const nlohmann::json* element, (GetElementByKey(json, key)));
+  ASSIGN_OR_RETURN((const nlohmann::json* element),
+                   (GetElementByKey(json, key)));
   if (!element->is_object()) {
     return absl::InvalidArgumentError(STATUS_MESSAGE(
         "Invalid JSON data: element with key " << key << " is not an object"));
@@ -33,7 +34,8 @@ absl::StatusOr<const nlohmann::json*> GetObject(const nlohmann::json& json,
 
 absl::StatusOr<const nlohmann::json*> GetArray(const nlohmann::json& json,
                                                const std::string& key) {
-  ASSIGN_OR_RETURN(const nlohmann::json* element, (GetElementByKey(json, key)));
+  ASSIGN_OR_RETURN((const nlohmann::json* element),
+                   (GetElementByKey(json, key)));
   if (!element->is_array()) {
     return absl::InvalidArgumentError(STATUS_MESSAGE(
         "Invalid JSON data: element with key " << key << " is not an array"));
@@ -42,7 +44,8 @@ absl::StatusOr<const nlohmann::json*> GetArray(const nlohmann::json& json,
 }
 
 absl::StatusOr<int> GetInt(const nlohmann::json& json, const std::string& key) {
-  ASSIGN_OR_RETURN(const nlohmann::json* element, (GetElementByKey(json, key)));
+  ASSIGN_OR_RETURN((const nlohmann::json* element),
+                   (GetElementByKey(json, key)));
   if (!element->is_number_integer()) {
     return absl::InvalidArgumentError(STATUS_MESSAGE(
         "Invalid JSON data: element with key " << key << " is not an integer"));
@@ -52,7 +55,8 @@ absl::StatusOr<int> GetInt(const nlohmann::json& json, const std::string& key) {
 
 absl::StatusOr<unsigned int> GetUnsignedInt(const nlohmann::json& json,
                                             const std::string& key) {
-  ASSIGN_OR_RETURN(const nlohmann::json* element, (GetElementByKey(json, key)));
+  ASSIGN_OR_RETURN((const nlohmann::json* element),
+                   (GetElementByKey(json, key)));
   if (!element->is_number_unsigned()) {
     return absl::InvalidArgumentError(
         STATUS_MESSAGE("Invalid JSON data: element with key "
@@ -63,7 +67,8 @@ absl::StatusOr<unsigned int> GetUnsignedInt(const nlohmann::json& json,
 
 absl::StatusOr<std::string> GetString(const nlohmann::json& json,
                                       const std::string& key) {
-  ASSIGN_OR_RETURN(const nlohmann::json* element, (GetElementByKey(json, key)));
+  ASSIGN_OR_RETURN((const nlohmann::json* element),
+                   (GetElementByKey(json, key)));
   if (!element->is_string()) {
     return absl::InvalidArgumentError(STATUS_MESSAGE(
         "Invalid JSON data: element with key " << key << " is not a string"));
@@ -73,7 +78,8 @@ absl::StatusOr<std::string> GetString(const nlohmann::json& json,
 
 absl::StatusOr<bool> GetBool(const nlohmann::json& json,
                              const std::string& key) {
-  ASSIGN_OR_RETURN(const nlohmann::json* element, (GetElementByKey(json, key)));
+  ASSIGN_OR_RETURN((const nlohmann::json* element),
+                   (GetElementByKey(json, key)));
   if (!element->is_boolean()) {
     return absl::InvalidArgumentError(STATUS_MESSAGE(
         "Invalid JSON data: element with key " << key << " is not a bool"));
@@ -539,11 +545,11 @@ absl::StatusOr<std::vector<glm::vec4>> ReadVec4Accessor(
 absl::StatusOr<BufferView> ParseBufferView(
     const nlohmann::json& buffer_view_json) {
   BufferView buffer_view;
-  ASSIGN_OR_RETURN(buffer_view.buffer,
+  ASSIGN_OR_RETURN((buffer_view.buffer),
                    GetUnsignedInt(buffer_view_json, "buffer"));
-  ASSIGN_OR_RETURN(buffer_view.size,
+  ASSIGN_OR_RETURN((buffer_view.size),
                    GetUnsignedInt(buffer_view_json, "byteLength"));
-  ASSIGN_OR_RETURN(buffer_view.offset,
+  ASSIGN_OR_RETURN((buffer_view.offset),
                    GetUnsignedInt(buffer_view_json, "byteOffset"));
   buffer_view.stride =
       GetUnsignedInt(buffer_view_json, "byteStride").value_or(0);
@@ -576,8 +582,8 @@ absl::StatusOr<Accessor> ParseAccessor(const nlohmann::json& accessor_json) {
 
   accessor.normalize_ints =
       GetBool(accessor_json, "normalized").value_or(false);
-  ASSIGN_OR_RETURN(accessor.count, GetUnsignedInt(accessor_json, "count"));
-  ASSIGN_OR_RETURN(accessor.type, GetString(accessor_json, "type"));
+  ASSIGN_OR_RETURN((accessor.count), GetUnsignedInt(accessor_json, "count"));
+  ASSIGN_OR_RETURN((accessor.type), GetString(accessor_json, "type"));
   return accessor;
 }
 
@@ -668,9 +674,9 @@ absl::Status FillBufferWithBase64(absl::string_view base64_data,
 
 absl::Status ParseBuffer(const nlohmann::json& buffer_json,
                          std::vector<uint8_t>& out_data) {
-  ASSIGN_OR_RETURN(unsigned int byte_len,
+  ASSIGN_OR_RETURN((unsigned int byte_len),
                    GetUnsignedInt(buffer_json, "byteLength"));
-  ASSIGN_OR_RETURN(const std::string& uri, GetString(buffer_json, "uri"));
+  ASSIGN_OR_RETURN((const std::string& uri), GetString(buffer_json, "uri"));
   if (uri.rfind("data:", 0) == 0) {
     // Handle data URI.
     size_t comma_index = uri.find(',');
@@ -798,7 +804,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
     return absl::InvalidArgumentError("Root of glTF file is not an object");
   }
 
-  ASSIGN_OR_RETURN(const nlohmann::json* buffers_json_array,
+  ASSIGN_OR_RETURN((const nlohmann::json* buffers_json_array),
                    GetArray(root, "buffers"));
   buffers.reserve(buffers.size() + buffers_json_array->size());
   for (const auto& buffer_json : *buffers_json_array) {
@@ -810,7 +816,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
   }
 
   std::vector<BufferView> buffer_views;
-  ASSIGN_OR_RETURN(const nlohmann::json* buffer_view_json_array,
+  ASSIGN_OR_RETURN((const nlohmann::json* buffer_view_json_array),
                    GetArray(root, "bufferViews"));
   buffer_views.reserve(buffer_view_json_array->size());
   for (const nlohmann::json& buffer_view_json : *buffer_view_json_array) {
@@ -818,12 +824,12 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
       return absl::InvalidArgumentError(
           "Invalid JSON data: buffer view is not an object.");
     }
-    ASSIGN_OR_RETURN(buffer_views.emplace_back(),
+    ASSIGN_OR_RETURN((buffer_views.emplace_back()),
                      ParseBufferView(buffer_view_json));
   }
 
   std::vector<Accessor> accessors;
-  ASSIGN_OR_RETURN(const nlohmann::json* accessor_json_array,
+  ASSIGN_OR_RETURN((const nlohmann::json* accessor_json_array),
                    GetArray(root, "accessors"));
   accessors.reserve(accessor_json_array->size());
   for (const nlohmann::json& accessor_json : *accessor_json_array) {
@@ -831,12 +837,12 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
       return absl::InvalidArgumentError(
           "Invalid JSON data: accessor is not an object.");
     }
-    ASSIGN_OR_RETURN(accessors.emplace_back(), ParseAccessor(accessor_json));
+    ASSIGN_OR_RETURN((accessors.emplace_back()), ParseAccessor(accessor_json));
   }
 
   std::shared_ptr<GltfModel> model(new GltfModel());
 
-  ASSIGN_OR_RETURN(const nlohmann::json* meshes_array,
+  ASSIGN_OR_RETURN((const nlohmann::json* meshes_array),
                    GetArray(root, "meshes"));
 
   for (const nlohmann::json& mesh : *meshes_array) {
@@ -851,7 +857,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
       continue;
     }
 
-    ASSIGN_OR_RETURN(const nlohmann::json* primitives_array,
+    ASSIGN_OR_RETURN((const nlohmann::json* primitives_array),
                      GetArray(mesh, "primitives"));
     if (primitives_array->size() == 0) {
       continue;
@@ -866,10 +872,10 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
       std::shared_ptr<Mesh> mesh(new Mesh());
       model->meshes[*mesh_name].push_back(mesh);
 
-      ASSIGN_OR_RETURN(const nlohmann::json* attributes,
+      ASSIGN_OR_RETURN((const nlohmann::json* attributes),
                        GetObject(primitive, "attributes"));
       {
-        ASSIGN_OR_RETURN(const unsigned int position_accessor_id,
+        ASSIGN_OR_RETURN((const unsigned int position_accessor_id),
                          GetUnsignedInt(*attributes, "POSITION"));
         if (position_accessor_id >= accessors.size()) {
           return absl::InvalidArgumentError(
@@ -884,7 +890,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
                                             "(wrong type or component type"));
         }
         ASSIGN_OR_RETURN(
-            const std::vector<glm::vec3>& positions,
+            (const std::vector<glm::vec3>& positions),
             ReadVec3Accessor(buffers, buffer_views, position_accessor));
         mesh->vertices.resize(positions.size());
         for (unsigned int i = 0; i < positions.size(); i++) {
@@ -918,7 +924,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
                                               "(wrong type or component type"));
           }
           ASSIGN_OR_RETURN(
-              const std::vector<glm::vec2>& texcoords,
+              (const std::vector<glm::vec2>& texcoords),
               ReadVec2Accessor(buffers, buffer_views, texcoord_accessor));
           if (texcoords.size() != mesh->vertices.size()) {
             return absl::InvalidArgumentError(STATUS_MESSAGE(
@@ -957,7 +963,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
                                               "(wrong type or component type"));
           }
           ASSIGN_OR_RETURN(
-              const std::vector<glm::vec3>& colours,
+              (const std::vector<glm::vec3>& colours),
               ReadVec3Accessor(buffers, buffer_views, colour_accessor));
           if (colours.size() != mesh->vertices.size()) {
             return absl::InvalidArgumentError(STATUS_MESSAGE(
@@ -991,7 +997,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
                                               "(wrong type or component type"));
           }
           ASSIGN_OR_RETURN(
-              const std::vector<glm::vec3>& normals,
+              (const std::vector<glm::vec3>& normals),
               ReadVec3Accessor(buffers, buffer_views, normal_accessor));
           if (normals.size() != mesh->vertices.size()) {
             return absl::InvalidArgumentError(STATUS_MESSAGE(
@@ -1026,7 +1032,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
                                               "(wrong type or component type"));
           }
           ASSIGN_OR_RETURN(
-              const std::vector<glm::vec4>& tangents,
+              (const std::vector<glm::vec4>& tangents),
               ReadVec4Accessor(buffers, buffer_views, tangent_accessor));
           if (tangents.size() != mesh->vertices.size()) {
             return absl::InvalidArgumentError(STATUS_MESSAGE(
@@ -1063,7 +1069,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
           }
           if (indices_accessor.component_type == ComponentType::UnsignedInt) {
             ASSIGN_OR_RETURN(
-                const std::vector<unsigned int>& indices,
+                (const std::vector<unsigned int>& indices),
                 ReadIntIndexAccessor(buffers, buffer_views, indices_accessor));
             mesh->triangles.resize(indices.size() / 3);
             for (unsigned int i = 0; i < indices.size(); i += 3) {
@@ -1072,7 +1078,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
             }
           } else if (indices_accessor.component_type ==
                      ComponentType::UnsignedShort) {
-            ASSIGN_OR_RETURN(const std::vector<unsigned short>& indices,
+            ASSIGN_OR_RETURN((const std::vector<unsigned short>& indices),
                              ReadShortIndexAccessor(buffers, buffer_views,
                                                     indices_accessor));
             mesh->small_triangles.resize(indices.size() / 3);
@@ -1082,7 +1088,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
             }
           } else {
             ASSIGN_OR_RETURN(
-                const std::vector<unsigned short>& indices,
+                (const std::vector<unsigned short>& indices),
                 ReadByteIndexAccessor(buffers, buffer_views, indices_accessor));
             mesh->small_triangles.resize(indices.size() / 3);
             for (unsigned int i = 0; i < indices.size(); i += 3) {
@@ -1100,7 +1106,8 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
 
 absl::StatusOr<std::shared_ptr<Mesh>> GltfModel::LoadMesh(
     const MeshDetails& details) {
-  ASSIGN_OR_RETURN(const std::shared_ptr<GltfModel> model, details.model.Get());
+  ASSIGN_OR_RETURN((const std::shared_ptr<GltfModel> model),
+                   details.model.Get());
 
   const auto it = model->meshes.find(details.mesh_name);
   if (it == model->meshes.end()) {

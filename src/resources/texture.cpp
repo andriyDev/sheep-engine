@@ -144,7 +144,7 @@ GLuint ToGL(RenderableTexture::FilterMode mode, bool use_mipmaps) {
 absl::StatusOr<std::shared_ptr<RenderableTexture>> RenderableTexture::Load(
     const Details& details) {
   std::shared_ptr<RenderableTexture> texture(new RenderableTexture());
-  ASSIGN_OR_RETURN(const std::shared_ptr<Texture> source_data,
+  ASSIGN_OR_RETURN((const std::shared_ptr<Texture> source_data),
                    details.texture.Get());
 
   texture->width = source_data->GetWidth();
