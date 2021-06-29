@@ -112,124 +112,46 @@ struct Accessor {
   std::string type;
 };
 
-absl::StatusOr<std::vector<unsigned short>> ReadByteIndexAccessor(
-    const std::vector<std::vector<unsigned char>>& buffers,
-    const std::vector<BufferView>& buffer_views, const Accessor& accessor) {
-  CHECK_EQ(accessor.type, "SCALAR");
-  CHECK_EQ((uint32_t)accessor.component_type,
-           (uint32_t)ComponentType::UnsignedByte);
+template <typename ComponentType>
+inline ComponentType ltoh(ComponentType value);
 
-  std::vector<unsigned short> indices;
-  indices.resize(accessor.count);
-  if (!accessor.buffer_view.has_value()) {
-    // TODO: Handle sparse accessors.
-    return indices;
-  }
-
-  const BufferView& buffer_view = buffer_views[*accessor.buffer_view];
-  const std::vector<unsigned char>& buffer = buffers[buffer_view.buffer];
-  unsigned int byte_start = buffer_view.offset + accessor.byte_offset;
-  unsigned int byte_end = std::min((unsigned int)buffer.size(),
-                                   buffer_view.offset + buffer_view.size);
-  unsigned int byte_stride = buffer_view.stride == 0 ? 1 : buffer_view.stride;
-  if (byte_start + byte_stride * accessor.count > byte_end) {
-    return absl::InvalidArgumentError(STATUS_MESSAGE(
-        "Accessor requested bytes that are out of range of buffer (view). "
-        "Requested range "
-        << byte_start << "-" << (byte_start + byte_stride * accessor.count)
-        << " but buffer ends at " << byte_end));
-  }
-  unsigned int byte_index = byte_start;
-  for (unsigned int i = 0, byte_index = byte_start; i < accessor.count;
-       ++i, byte_index += byte_stride) {
-    indices[i] = (unsigned short)buffer[byte_index];
-  }
-  return indices;
+template <>
+inline float ltoh(float value) {
+  return ltohf(value);
 }
 
-absl::StatusOr<std::vector<unsigned short>> ReadShortIndexAccessor(
-    const std::vector<std::vector<unsigned char>>& buffers,
-    const std::vector<BufferView>& buffer_views, const Accessor& accessor) {
-  CHECK_EQ(accessor.type, "SCALAR");
-  CHECK_EQ((uint32_t)accessor.component_type,
-           (uint32_t)ComponentType::UnsignedShort);
-
-  std::vector<unsigned short> indices;
-  indices.resize(accessor.count);
-  if (!accessor.buffer_view.has_value()) {
-    // TODO: Handle sparse accessors.
-    return indices;
-  }
-
-  const BufferView& buffer_view = buffer_views[*accessor.buffer_view];
-  const std::vector<unsigned char>& buffer = buffers[buffer_view.buffer];
-  unsigned int byte_start = buffer_view.offset + accessor.byte_offset;
-  unsigned int byte_end = std::min((unsigned int)buffer.size(),
-                                   buffer_view.offset + buffer_view.size);
-  unsigned int byte_stride = buffer_view.stride == 0 ? 2 : buffer_view.stride;
-  if (byte_start + byte_stride * accessor.count > byte_end) {
-    return absl::InvalidArgumentError(STATUS_MESSAGE(
-        "Accessor requested bytes that are out of range of buffer (view). "
-        "Requested range "
-        << byte_start << "-" << (byte_start + byte_stride * accessor.count)
-        << " but buffer ends at " << byte_end));
-  }
-  unsigned int byte_index = byte_start;
-  for (unsigned int i = 0, byte_index = byte_start; i < accessor.count;
-       ++i, byte_index += byte_stride) {
-    indices[i] = ltohs(((unsigned short)buffer[byte_index]) |
-                       ((unsigned short)buffer[byte_index + 1] << 8));
-  }
-  return indices;
+template <>
+inline uint32_t ltoh(uint32_t value) {
+  return ltohl(value);
 }
 
-absl::StatusOr<std::vector<unsigned int>> ReadIntIndexAccessor(
-    const std::vector<std::vector<unsigned char>>& buffers,
-    const std::vector<BufferView>& buffer_views, const Accessor& accessor) {
-  CHECK_EQ(accessor.type, "SCALAR");
-  CHECK_EQ((uint32_t)accessor.component_type,
-           (uint32_t)ComponentType::UnsignedInt);
-
-  std::vector<unsigned int> indices;
-  indices.resize(accessor.count);
-  if (!accessor.buffer_view.has_value()) {
-    // TODO: Handle sparse accessors.
-    return indices;
-  }
-
-  const BufferView& buffer_view = buffer_views[*accessor.buffer_view];
-  const std::vector<unsigned char>& buffer = buffers[buffer_view.buffer];
-  unsigned int byte_start = buffer_view.offset + accessor.byte_offset;
-  unsigned int byte_end = std::min((unsigned int)buffer.size(),
-                                   buffer_view.offset + buffer_view.size);
-  unsigned int byte_stride = buffer_view.stride == 0 ? 4 : buffer_view.stride;
-  if (byte_start + byte_stride * accessor.count > byte_end) {
-    return absl::InvalidArgumentError(STATUS_MESSAGE(
-        "Accessor requested bytes that are out of range of buffer (view). "
-        "Requested range "
-        << byte_start << "-" << (byte_start + byte_stride * accessor.count)
-        << " but buffer ends at " << byte_end));
-  }
-  unsigned int byte_index = byte_start;
-  for (unsigned int i = 0, byte_index = byte_start; i < accessor.count;
-       ++i, byte_index += byte_stride) {
-    indices[i] = ltohl(((uint32_t)buffer[byte_index]) |
-                       ((uint32_t)buffer[byte_index + 1] << 8) |
-                       ((uint32_t)buffer[byte_index + 2] << 16) |
-                       ((uint32_t)buffer[byte_index + 3] << 24));
-  }
-  return indices;
+template <>
+inline uint16_t ltoh(uint16_t value) {
+  return ltohs(value);
 }
 
-absl::StatusOr<std::vector<glm::vec2>> ReadVec2Accessor(
-    const std::vector<std::vector<unsigned char>>& buffers,
-    const std::vector<BufferView>& buffer_views, const Accessor& accessor) {
-  CHECK_EQ(accessor.type, "VEC2");
+template <>
+inline uint8_t ltoh(uint8_t value) {
+  return value;
+}
 
-  std::vector<glm::vec2> result;
+template <>
+inline int16_t ltoh(int16_t value) {
+  return ltohs(value);
+}
+
+template <>
+inline int8_t ltoh(int8_t value) {
+  return value;
+}
+
+template <typename ComponentType, int components>
+absl::StatusOr<std::vector<glm::vec<components, ComponentType>>> ReadAccessor(
+    const std::vector<std::vector<uint8_t>>& buffers,
+    const std::vector<BufferView>& buffer_views, const Accessor& accessor) {
+  std::vector<glm::vec<components, ComponentType>> result;
   result.resize(accessor.count);
   if (!accessor.buffer_view.has_value()) {
-    memset(result.data(), 0, result.size() * sizeof(glm::vec2));
     // TODO: Handle sparse accessors.
     return result;
   }
@@ -239,307 +161,105 @@ absl::StatusOr<std::vector<glm::vec2>> ReadVec2Accessor(
   unsigned int byte_start = buffer_view.offset + accessor.byte_offset;
   unsigned int byte_end = std::min((unsigned int)buffer.size(),
                                    buffer_view.offset + buffer_view.size);
-  unsigned int byte_index = byte_start;
-
-  switch ((uint32_t)accessor.component_type) {
-    case GL_UNSIGNED_BYTE: {
-      unsigned int byte_stride =
-          buffer_view.stride == 0 ? 2 : buffer_view.stride;
-      if (byte_start + byte_stride * accessor.count > byte_end) {
-        return absl::InvalidArgumentError(STATUS_MESSAGE(
-            "Accessor requested bytes that are out of range of buffer (view). "
-            "Requested range "
-            << byte_start << "-" << (byte_start + byte_stride * accessor.count)
-            << " but buffer ends at " << byte_end));
-      }
-      for (unsigned int i = 0, byte_index = byte_start; i < accessor.count;
-           ++i, byte_index += byte_stride) {
-        uint8_t x_int = buffer[byte_index], y_int = buffer[byte_index + 1];
-        if (accessor.normalize_ints) {
-          float norm = (uint8_t)(-1);
-          result[i] = glm::vec2(x_int / norm, y_int / norm);
-        } else {
-          result[i] = glm::vec2(x_int, y_int);
-        }
-      }
-    } break;
-    case GL_UNSIGNED_SHORT: {
-      unsigned int byte_stride =
-          buffer_view.stride == 0 ? 4 : buffer_view.stride;
-      if (byte_start + byte_stride * accessor.count > byte_end) {
-        return absl::InvalidArgumentError(STATUS_MESSAGE(
-            "Accessor requested bytes that are out of range of buffer (view). "
-            "Requested range "
-            << byte_start << "-" << (byte_start + byte_stride * accessor.count)
-            << " but buffer ends at " << byte_end));
-      }
-      for (unsigned int i = 0, byte_index = byte_start; i < accessor.count;
-           ++i, byte_index += byte_stride) {
-        uint16_t x_int = ltohs(((uint16_t)buffer[byte_index]) |
-                               ((uint16_t)buffer[byte_index + 1] << 8)),
-                 y_int = ltohs(((uint16_t)buffer[byte_index + 2]) |
-                               ((uint16_t)buffer[byte_index + 3] << 8));
-        if (accessor.normalize_ints) {
-          float norm = (uint16_t)(-1);
-          result[i] = glm::vec2(x_int / norm, y_int / norm);
-        } else {
-          result[i] = glm::vec2(x_int, y_int);
-        }
-      }
-    } break;
-    case GL_FLOAT: {
-      unsigned int byte_stride =
-          buffer_view.stride == 0 ? 8 : buffer_view.stride;
-      if (byte_start + byte_stride * accessor.count > byte_end) {
-        return absl::InvalidArgumentError(STATUS_MESSAGE(
-            "Accessor requested bytes that are out of range of buffer (view). "
-            "Requested range "
-            << byte_start << "-" << (byte_start + byte_stride * accessor.count)
-            << " but buffer ends at " << byte_end));
-      }
-      for (unsigned int i = 0, byte_index = byte_start; i < accessor.count;
-           ++i, byte_index += byte_stride) {
-        union {
-          float fval;
-          uint32_t ival;
-        } x, y;
-        x.ival = ltohl(((uint32_t)buffer[byte_index]) |
-                       ((uint32_t)buffer[byte_index + 1] << 8) |
-                       ((uint32_t)buffer[byte_index + 2] << 16) |
-                       ((uint32_t)buffer[byte_index + 3] << 24));
-        y.ival = ltohl(((uint32_t)buffer[byte_index + 4]) |
-                       ((uint32_t)buffer[byte_index + 5] << 8) |
-                       ((uint32_t)buffer[byte_index + 6] << 16) |
-                       ((uint32_t)buffer[byte_index + 7] << 24));
-        result[i] = glm::vec2(x.fval, y.fval);
-      }
-    } break;
-    default:
-      CHECK(false) << "Invalid accessor component type for ";
+  unsigned int byte_stride = buffer_view.stride == 0
+                                 ? sizeof(glm::vec<components, ComponentType>)
+                                 : buffer_view.stride;
+  if (byte_start + byte_stride * accessor.count > byte_end) {
+    return absl::InvalidArgumentError(STATUS_MESSAGE(
+        "Accessor requested bytes that are out of range of buffer (view). "
+        "Requested range "
+        << byte_start << "-" << (byte_start + byte_stride * accessor.count)
+        << " but buffer ends at " << byte_end));
+  }
+  ComponentType* result_i = (ComponentType*)result.data();
+  for (unsigned int i = 0, byte_index = byte_start; i < accessor.count;
+       ++i, byte_index += byte_stride, result_i += components) {
+    memcpy(result_i, buffer.data() + byte_index,
+           sizeof(ComponentType) * components);
+    for (unsigned int component = 0; component < components; ++component) {
+      result_i[component] = ltoh(result_i[component]);
+    }
   }
   return result;
 }
 
-absl::StatusOr<std::vector<glm::vec3>> ReadVec3Accessor(
-    const std::vector<std::vector<unsigned char>>& buffers,
-    const std::vector<BufferView>& buffer_views, const Accessor& accessor) {
-  CHECK_EQ(accessor.type, "VEC3");
+template <typename ComponentType>
+float NormalizeInt(ComponentType value);
 
-  std::vector<glm::vec3> result;
-  result.resize(accessor.count);
-  if (!accessor.buffer_view.has_value()) {
-    memset(result.data(), 0, result.size() * sizeof(glm::vec3));
-    // TODO: Handle sparse accessors.
-    return result;
-  }
-
-  const BufferView& buffer_view = buffer_views[*accessor.buffer_view];
-  const std::vector<unsigned char>& buffer = buffers[buffer_view.buffer];
-  unsigned int byte_start = buffer_view.offset + accessor.byte_offset;
-  unsigned int byte_end = std::min((unsigned int)buffer.size(),
-                                   buffer_view.offset + buffer_view.size);
-  unsigned int byte_index = byte_start;
-
-  switch ((uint32_t)accessor.component_type) {
-    case GL_UNSIGNED_BYTE: {
-      // TODO: Ensure this doesn't need to be aligned to word-boundaries.
-      unsigned int byte_stride =
-          buffer_view.stride == 0 ? 3 : buffer_view.stride;
-      if (byte_start + byte_stride * accessor.count > byte_end) {
-        return absl::InvalidArgumentError(STATUS_MESSAGE(
-            "Accessor requested bytes that are out of range of buffer (view). "
-            "Requested range "
-            << byte_start << "-" << (byte_start + byte_stride * accessor.count)
-            << " but buffer ends at " << byte_end));
-      }
-      for (unsigned int i = 0, byte_index = byte_start; i < accessor.count;
-           ++i, byte_index += byte_stride) {
-        uint8_t x_int = buffer[byte_index], y_int = buffer[byte_index + 1],
-                z_int = buffer[byte_index + 2];
-        if (accessor.normalize_ints) {
-          float norm = (uint8_t)(-1);
-          result[i] = glm::vec3(x_int / norm, y_int / norm, z_int / norm);
-        } else {
-          result[i] = glm::vec3(x_int, y_int, z_int);
-        }
-      }
-    } break;
-    case GL_UNSIGNED_SHORT: {
-      // TODO: Ensure this doesn't need to be aligned to word-boundaries.
-      unsigned int byte_stride =
-          buffer_view.stride == 0 ? 6 : buffer_view.stride;
-      if (byte_start + byte_stride * accessor.count > byte_end) {
-        return absl::InvalidArgumentError(STATUS_MESSAGE(
-            "Accessor requested bytes that are out of range of buffer (view). "
-            "Requested range "
-            << byte_start << "-" << (byte_start + byte_stride * accessor.count)
-            << " but buffer ends at " << byte_end));
-      }
-      for (unsigned int i = 0, byte_index = byte_start; i < accessor.count;
-           ++i, byte_index += byte_stride) {
-        uint16_t x_int = ltohs(((uint16_t)buffer[byte_index]) |
-                               ((uint16_t)buffer[byte_index + 1] << 8)),
-                 y_int = ltohs(((uint16_t)buffer[byte_index + 2]) |
-                               ((uint16_t)buffer[byte_index + 3] << 8)),
-                 z_int = ltohs(((uint16_t)buffer[byte_index + 4]) |
-                               ((uint16_t)buffer[byte_index + 5] << 8));
-        if (accessor.normalize_ints) {
-          float norm = (uint16_t)(-1);
-          result[i] = glm::vec3(x_int / norm, y_int / norm, z_int / norm);
-        } else {
-          result[i] = glm::vec3(x_int, y_int, z_int);
-        }
-      }
-    } break;
-    case GL_FLOAT: {
-      unsigned int byte_stride =
-          buffer_view.stride == 0 ? 12 : buffer_view.stride;
-      if (byte_start + byte_stride * accessor.count > byte_end) {
-        return absl::InvalidArgumentError(STATUS_MESSAGE(
-            "Accessor requested bytes that are out of range of buffer (view). "
-            "Requested range "
-            << byte_start << "-" << (byte_start + byte_stride * accessor.count)
-            << " but buffer ends at " << byte_end));
-      }
-      for (unsigned int i = 0, byte_index = byte_start; i < accessor.count;
-           ++i, byte_index += byte_stride) {
-        union {
-          float fval;
-          uint32_t ival;
-        } x, y, z;
-        x.ival = ltohl(((uint32_t)buffer[byte_index]) |
-                       ((uint32_t)buffer[byte_index + 1] << 8) |
-                       ((uint32_t)buffer[byte_index + 2] << 16) |
-                       ((uint32_t)buffer[byte_index + 3] << 24));
-        y.ival = ltohl(((uint32_t)buffer[byte_index + 4]) |
-                       ((uint32_t)buffer[byte_index + 5] << 8) |
-                       ((uint32_t)buffer[byte_index + 6] << 16) |
-                       ((uint32_t)buffer[byte_index + 7] << 24));
-        z.ival = ltohl(((uint32_t)buffer[byte_index + 8]) |
-                       ((uint32_t)buffer[byte_index + 9] << 8) |
-                       ((uint32_t)buffer[byte_index + 10] << 16) |
-                       ((uint32_t)buffer[byte_index + 11] << 24));
-        result[i] = glm::vec3(x.fval, y.fval, z.fval);
-      }
-    } break;
-    default:
-      CHECK(false) << "Invalid accessor component type for ";
-  }
-  return result;
+template <>
+float NormalizeInt(uint8_t value) {
+  return float(value) / ((uint8_t)-1);
 }
 
-absl::StatusOr<std::vector<glm::vec4>> ReadVec4Accessor(
-    const std::vector<std::vector<unsigned char>>& buffers,
+template <>
+float NormalizeInt(uint16_t value) {
+  return float(value) / ((uint16_t)-1);
+}
+
+template <>
+float NormalizeInt(uint32_t value) {
+  return float(value) / ((uint32_t)-1);
+}
+
+template <>
+float NormalizeInt(int8_t value) {
+  return std::max(value / 127.0f, -1.0f);
+}
+
+template <>
+float NormalizeInt(int16_t value) {
+  return std::max(value / 32767.0f, -1.0f);
+}
+
+template <typename ComponentType, int components>
+std::vector<glm::vec<components, float>> NormalizeAccessorData(
+    const std::vector<glm::vec<components, ComponentType>>& accessor_data) {
+  std::vector<glm::vec<components, float>> normalized_data;
+  normalized_data.resize(accessor_data.size());
+  float* normalized_data_ptr = (float*)normalized_data.data();
+  ComponentType* accessor_data_ptr = (ComponentType*)accessor_data.data();
+  for (unsigned int i = 0; i < accessor_data.size() * components; ++i) {
+    for (unsigned int component = 0; component < components; ++component) {
+      *(normalized_data_ptr++) = NormalizeInt(*(accessor_data_ptr++));
+    }
+  }
+  return normalized_data;
+}
+
+template <int components>
+absl::StatusOr<std::vector<glm::vec<components, float>>> ReadFloatAccessor(
+    const std::vector<std::vector<uint8_t>>& buffers,
     const std::vector<BufferView>& buffer_views, const Accessor& accessor) {
-  CHECK_EQ(accessor.type, "VEC4");
-
-  std::vector<glm::vec4> result;
-  result.resize(accessor.count);
-  if (!accessor.buffer_view.has_value()) {
-    memset(result.data(), 0, result.size() * sizeof(glm::vec4));
-    // TODO: Handle sparse accessors.
-    return result;
-  }
-
-  const BufferView& buffer_view = buffer_views[*accessor.buffer_view];
-  const std::vector<unsigned char>& buffer = buffers[buffer_view.buffer];
-  unsigned int byte_start = buffer_view.offset + accessor.byte_offset;
-  unsigned int byte_end = std::min((unsigned int)buffer.size(),
-                                   buffer_view.offset + buffer_view.size);
-  unsigned int byte_index = byte_start;
-
-  switch ((uint32_t)accessor.component_type) {
-    case GL_UNSIGNED_BYTE: {
-      unsigned int byte_stride =
-          buffer_view.stride == 0 ? 4 : buffer_view.stride;
-      if (byte_start + byte_stride * accessor.count > byte_end) {
-        return absl::InvalidArgumentError(STATUS_MESSAGE(
-            "Accessor requested bytes that are out of range of buffer (view). "
-            "Requested range "
-            << byte_start << "-" << (byte_start + byte_stride * accessor.count)
-            << " but buffer ends at " << byte_end));
-      }
-      for (unsigned int i = 0, byte_index = byte_start; i < accessor.count;
-           ++i, byte_index += byte_stride) {
-        uint8_t x_int = buffer[byte_index], y_int = buffer[byte_index + 1],
-                z_int = buffer[byte_index + 2], w_int = buffer[byte_index + 3];
-        if (accessor.normalize_ints) {
-          float norm = (uint8_t)(-1);
-          result[i] =
-              glm::vec4(x_int / norm, y_int / norm, z_int / norm, z_int / norm);
-        } else {
-          result[i] = glm::vec4(x_int, y_int, z_int, z_int);
-        }
-      }
+  switch (accessor.component_type) {
+    case ComponentType::Float: {
+      return ReadAccessor<float, components>(buffers, buffer_views, accessor);
     } break;
-    case GL_UNSIGNED_SHORT: {
-      unsigned int byte_stride =
-          buffer_view.stride == 0 ? 8 : buffer_view.stride;
-      if (byte_start + byte_stride * accessor.count > byte_end) {
-        return absl::InvalidArgumentError(STATUS_MESSAGE(
-            "Accessor requested bytes that are out of range of buffer (view). "
-            "Requested range "
-            << byte_start << "-" << (byte_start + byte_stride * accessor.count)
-            << " but buffer ends at " << byte_end));
+    case ComponentType::UnsignedByte: {
+      if (!accessor.normalize_ints) {
+        return absl::InvalidArgumentError(
+            "Float accessor using integer components must normalize ints.");
       }
-      for (unsigned int i = 0, byte_index = byte_start; i < accessor.count;
-           ++i, byte_index += byte_stride) {
-        uint16_t x_int = ltohs(((uint16_t)buffer[byte_index]) |
-                               ((uint16_t)buffer[byte_index + 1] << 8)),
-                 y_int = ltohs(((uint16_t)buffer[byte_index + 2]) |
-                               ((uint16_t)buffer[byte_index + 3] << 8)),
-                 z_int = ltohs(((uint16_t)buffer[byte_index + 4]) |
-                               ((uint16_t)buffer[byte_index + 5] << 8)),
-                 w_int = ltohs(((uint16_t)buffer[byte_index + 6]) |
-                               ((uint16_t)buffer[byte_index + 7] << 8));
-        if (accessor.normalize_ints) {
-          float norm = (uint16_t)(-1);
-          result[i] =
-              glm::vec4(x_int / norm, y_int / norm, z_int / norm, w_int / norm);
-        } else {
-          result[i] = glm::vec4(x_int, y_int, z_int, w_int);
-        }
+      ASSIGN_OR_RETURN(
+          (const std::vector<glm::vec<components, uint8_t>>&
+               unnormalized_floats),
+          (ReadAccessor<uint8_t, components>(buffers, buffer_views, accessor)));
+      return NormalizeAccessorData(unnormalized_floats);
+    }
+    case ComponentType::UnsignedShort: {
+      if (!accessor.normalize_ints) {
+        return absl::InvalidArgumentError(
+            "Float accessor using integer components must normalize ints.");
       }
-    } break;
-    case GL_FLOAT: {
-      unsigned int byte_stride =
-          buffer_view.stride == 0 ? 16 : buffer_view.stride;
-      if (byte_start + byte_stride * accessor.count > byte_end) {
-        return absl::InvalidArgumentError(STATUS_MESSAGE(
-            "Accessor requested bytes that are out of range of buffer (view). "
-            "Requested range "
-            << byte_start << "-" << (byte_start + byte_stride * accessor.count)
-            << " but buffer ends at " << byte_end));
-      }
-      for (unsigned int i = 0, byte_index = byte_start; i < accessor.count;
-           ++i, byte_index += byte_stride) {
-        union {
-          float fval;
-          uint32_t ival;
-        } x, y, z, w;
-        x.ival = ltohl(((uint32_t)buffer[byte_index]) |
-                       ((uint32_t)buffer[byte_index + 1] << 8) |
-                       ((uint32_t)buffer[byte_index + 2] << 16) |
-                       ((uint32_t)buffer[byte_index + 3] << 24));
-        y.ival = ltohl(((uint32_t)buffer[byte_index + 4]) |
-                       ((uint32_t)buffer[byte_index + 5] << 8) |
-                       ((uint32_t)buffer[byte_index + 6] << 16) |
-                       ((uint32_t)buffer[byte_index + 7] << 24));
-        z.ival = ltohl(((uint32_t)buffer[byte_index + 8]) |
-                       ((uint32_t)buffer[byte_index + 9] << 8) |
-                       ((uint32_t)buffer[byte_index + 10] << 16) |
-                       ((uint32_t)buffer[byte_index + 11] << 24));
-        w.ival = ltohl(((uint32_t)buffer[byte_index + 12]) |
-                       ((uint32_t)buffer[byte_index + 13] << 8) |
-                       ((uint32_t)buffer[byte_index + 14] << 16) |
-                       ((uint32_t)buffer[byte_index + 15] << 24));
-        result[i] = glm::vec4(x.fval, y.fval, z.fval, w.fval);
-      }
-    } break;
+      ASSIGN_OR_RETURN((const std::vector<glm::vec<components, uint16_t>>&
+                            unnormalized_floats),
+                       (ReadAccessor<uint16_t, components>(
+                           buffers, buffer_views, accessor)));
+      return NormalizeAccessorData(unnormalized_floats);
+    }
     default:
-      CHECK(false) << "Invalid accessor component type for ";
+      return absl::InvalidArgumentError(
+          "Accessor has bad component type - cannot be float accessor.");
   }
-  return result;
 }
 
 absl::StatusOr<BufferView> ParseBufferView(
@@ -891,7 +611,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
         }
         ASSIGN_OR_RETURN(
             (const std::vector<glm::vec3>& positions),
-            ReadVec3Accessor(buffers, buffer_views, position_accessor));
+            (ReadAccessor<float, 3>(buffers, buffer_views, position_accessor)));
         mesh->vertices.resize(positions.size());
         for (unsigned int i = 0; i < positions.size(); i++) {
           mesh->vertices[i].position = positions[i];
@@ -910,22 +630,15 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
                 "Missing accessor: " << (*texcoord_accessor_id)));
           }
           const Accessor& texcoord_accessor = accessors[*texcoord_accessor_id];
-          if (texcoord_accessor.type != "VEC2" ||
-              (texcoord_accessor.component_type != ComponentType::Float &&
-               (texcoord_accessor.component_type !=
-                    ComponentType::UnsignedByte ||
-                !texcoord_accessor.normalize_ints) &&
-               (texcoord_accessor.component_type !=
-                    ComponentType::UnsignedShort ||
-                !texcoord_accessor.normalize_ints))) {
-            return absl::InvalidArgumentError(
-                STATUS_MESSAGE("Accessor " << (*texcoord_accessor_id)
-                                           << " cannot be a texcoord accessor "
-                                              "(wrong type or component type"));
+          if (texcoord_accessor.type != "VEC2") {
+            return absl::InvalidArgumentError(STATUS_MESSAGE(
+                "Accessor "
+                << (*texcoord_accessor_id)
+                << " is not a VEC2 - cannot be texcoord accessor."));
           }
           ASSIGN_OR_RETURN(
               (const std::vector<glm::vec2>& texcoords),
-              ReadVec2Accessor(buffers, buffer_views, texcoord_accessor));
+              (ReadFloatAccessor<2>(buffers, buffer_views, texcoord_accessor)));
           if (texcoords.size() != mesh->vertices.size()) {
             return absl::InvalidArgumentError(STATUS_MESSAGE(
                 "Texture coordinates do not have same size as vertices. Have "
@@ -942,7 +655,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
             GetUnsignedInt(*attributes, "COLOR_0");
         if (!colour_accessor_id.ok()) {
           for (Mesh::Vertex& vertex : mesh->vertices) {
-            vertex.colour = glm::vec3(0, 0, 0);
+            vertex.colour = glm::vec4(0, 0, 0, 0);
           }
         } else {
           if (*colour_accessor_id >= accessors.size()) {
@@ -950,29 +663,35 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
                 STATUS_MESSAGE("Missing accessor: " << (*colour_accessor_id)));
           }
           const Accessor& colour_accessor = accessors[*colour_accessor_id];
-          if (colour_accessor.type != "VEC3" ||
-              (colour_accessor.component_type != ComponentType::Float &&
-               (colour_accessor.component_type != ComponentType::UnsignedByte ||
-                !colour_accessor.normalize_ints) &&
-               (colour_accessor.component_type !=
-                    ComponentType::UnsignedShort ||
-                !colour_accessor.normalize_ints))) {
+          if (colour_accessor.type == "VEC3") {
+            ASSIGN_OR_RETURN(
+                (const std::vector<glm::vec3>& colours),
+                (ReadFloatAccessor<3>(buffers, buffer_views, colour_accessor)));
+            if (colours.size() != mesh->vertices.size()) {
+              return absl::InvalidArgumentError(STATUS_MESSAGE(
+                  "Colours do not have same size as vertices. Have "
+                  << mesh->vertices.size() << " vertices, but "
+                  << colours.size() << " colours"));
+            }
+            for (unsigned int i = 0; i < mesh->vertices.size(); i++) {
+              mesh->vertices[i].colour = glm::vec4(colours[i], 1.0f);
+            }
+          } else if (colour_accessor.type == "VEC4") {
+            ASSIGN_OR_RETURN(
+                (const std::vector<glm::vec4>& colours),
+                (ReadFloatAccessor<4>(buffers, buffer_views, colour_accessor)));
+            if (colours.size() != mesh->vertices.size()) {
+              return absl::InvalidArgumentError(STATUS_MESSAGE(
+                  "Colours do not have same size as vertices. Have "
+                  << mesh->vertices.size() << " vertices, but "
+                  << colours.size() << " colours"));
+            }
+            for (unsigned int i = 0; i < mesh->vertices.size(); i++) {
+              mesh->vertices[i].colour = colours[i];
+            }
+          } else {
             return absl::InvalidArgumentError(
-                STATUS_MESSAGE("Accessor " << (*colour_accessor_id)
-                                           << " cannot be a colour accessor "
-                                              "(wrong type or component type"));
-          }
-          ASSIGN_OR_RETURN(
-              (const std::vector<glm::vec3>& colours),
-              ReadVec3Accessor(buffers, buffer_views, colour_accessor));
-          if (colours.size() != mesh->vertices.size()) {
-            return absl::InvalidArgumentError(STATUS_MESSAGE(
-                "Colours do not have same size as vertices. Have "
-                << mesh->vertices.size() << " vertices, but " << colours.size()
-                << " colours"));
-          }
-          for (unsigned int i = 0; i < mesh->vertices.size(); i++) {
-            mesh->vertices[i].colour = colours[i];
+                "Accessor cannot be a colour accessor: wrong type");
           }
         }
       }
@@ -998,7 +717,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
           }
           ASSIGN_OR_RETURN(
               (const std::vector<glm::vec3>& normals),
-              ReadVec3Accessor(buffers, buffer_views, normal_accessor));
+              (ReadAccessor<float, 3>(buffers, buffer_views, normal_accessor)));
           if (normals.size() != mesh->vertices.size()) {
             return absl::InvalidArgumentError(STATUS_MESSAGE(
                 "Normals do not have same size as vertices. Have "
@@ -1031,9 +750,9 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
                                            << " cannot be a tangent accessor "
                                               "(wrong type or component type"));
           }
-          ASSIGN_OR_RETURN(
-              (const std::vector<glm::vec4>& tangents),
-              ReadVec4Accessor(buffers, buffer_views, tangent_accessor));
+          ASSIGN_OR_RETURN((const std::vector<glm::vec4>& tangents),
+                           (ReadAccessor<float, 4>(buffers, buffer_views,
+                                                   tangent_accessor)));
           if (tangents.size() != mesh->vertices.size()) {
             return absl::InvalidArgumentError(STATUS_MESSAGE(
                 "Tangents do not have same size as vertices. Have "
@@ -1041,10 +760,11 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
                 << " tangents"));
           }
           for (unsigned int i = 0; i < mesh->vertices.size(); i++) {
-            // TODO: Handle tangents with negative w component.
             mesh->vertices[i].tangent = tangents[i];
-            mesh->vertices[i].bitangent = glm::normalize(glm::cross(
-                mesh->vertices[i].normal, mesh->vertices[i].tangent));
+            mesh->vertices[i].bitangent =
+                glm::normalize(glm::cross(mesh->vertices[i].normal,
+                                          mesh->vertices[i].tangent) *
+                               tangents[i].w);
           }
         }
       }
@@ -1069,31 +789,34 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
           }
           if (indices_accessor.component_type == ComponentType::UnsignedInt) {
             ASSIGN_OR_RETURN(
-                (const std::vector<unsigned int>& indices),
-                ReadIntIndexAccessor(buffers, buffer_views, indices_accessor));
+                (const std::vector<glm::vec<1, unsigned int>>& indices),
+                (ReadAccessor<unsigned int, 1>(buffers, buffer_views,
+                                               indices_accessor)));
             mesh->triangles.resize(indices.size() / 3);
             for (unsigned int i = 0; i < indices.size(); i += 3) {
               mesh->triangles.push_back(
-                  {indices[i], indices[i + 1], indices[i + 2]});
+                  {indices[i].x, indices[i + 1].x, indices[i + 2].x});
             }
           } else if (indices_accessor.component_type ==
                      ComponentType::UnsignedShort) {
-            ASSIGN_OR_RETURN((const std::vector<unsigned short>& indices),
-                             ReadShortIndexAccessor(buffers, buffer_views,
-                                                    indices_accessor));
+            ASSIGN_OR_RETURN(
+                (const std::vector<glm::vec<1, unsigned short>>& indices),
+                (ReadAccessor<unsigned short, 1>(buffers, buffer_views,
+                                                 indices_accessor)));
             mesh->small_triangles.resize(indices.size() / 3);
             for (unsigned int i = 0; i < indices.size(); i += 3) {
               mesh->small_triangles.push_back(
-                  {indices[i], indices[i + 1], indices[i + 2]});
+                  {indices[i].x, indices[i + 1].x, indices[i + 2].x});
             }
           } else {
             ASSIGN_OR_RETURN(
-                (const std::vector<unsigned short>& indices),
-                ReadByteIndexAccessor(buffers, buffer_views, indices_accessor));
+                (const std::vector<glm::vec<1, unsigned char>>& indices),
+                (ReadAccessor<unsigned char, 1>(buffers, buffer_views,
+                                                indices_accessor)));
             mesh->small_triangles.resize(indices.size() / 3);
             for (unsigned int i = 0; i < indices.size(); i += 3) {
               mesh->small_triangles.push_back(
-                  {indices[i], indices[i + 1], indices[i + 2]});
+                  {indices[i].x, indices[i + 1].x, indices[i + 2].x});
             }
           }
         }
