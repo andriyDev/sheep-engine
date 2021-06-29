@@ -72,7 +72,7 @@ absl::StatusOr<std::shared_ptr<RenderableMesh>> RenderableMesh::Load(
                  source_skin->vertices.data(), GL_STATIC_DRAW);
     glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Skin::Vertex),
                           (void*)offsetof(Skin::Vertex, weights));
-    glVertexAttribIPointer(7, 4, GL_UNSIGNED_INT, sizeof(Skin::Vertex),
+    glVertexAttribIPointer(7, 4, GL_UNSIGNED_SHORT, sizeof(Skin::Vertex),
                            (void*)offsetof(Skin::Vertex, bone_indices));
   }
 

@@ -13,8 +13,8 @@
 class Skin {
  public:
   struct Vertex {
-    float weights[4];
-    uint32_t bone_indices[4];
+    glm::vec4 weights;
+    glm::vec<4, unsigned short> bone_indices;
   };
 
   std::vector<Vertex> vertices;
