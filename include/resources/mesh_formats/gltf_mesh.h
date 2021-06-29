@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "resources/mesh.h"
+#include "resources/skin.h"
 #include "utility/resource_handle.h"
 
 struct GltfModel {
@@ -20,14 +21,21 @@ struct GltfModel {
   static absl::StatusOr<std::shared_ptr<GltfModel>> Load(
       const Details& details);
 
-  struct MeshDetails {
+  struct PrimitiveDetails {
     ResourceHandle<GltfModel> model;
     std::string mesh_name;
     unsigned int index;
   };
   static absl::StatusOr<std::shared_ptr<Mesh>> LoadMesh(
-      const MeshDetails& details);
+      const PrimitiveDetails& details);
+
+  static absl::StatusOr<std::shared_ptr<Skin>> LoadSkin(
+      const PrimitiveDetails& details);
 
  private:
-  absl::flat_hash_map<std::string, std::vector<std::shared_ptr<Mesh>>> meshes;
+  struct Primitive {
+    std::shared_ptr<Mesh> mesh;
+    std::shared_ptr<Skin> skin;
+  };
+  absl::flat_hash_map<std::string, std::vector<Primitive>> primitives;
 };

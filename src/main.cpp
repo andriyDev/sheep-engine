@@ -70,7 +70,7 @@ std::shared_ptr<Mesh> squareMesh() {
   "uniform sampler2D tex;\n"                    \
   "void main() {\n"                             \
   "  vec3 sun_dir = normalize(vec3(1,1,1));\n"  \
-  "  color = vec3(0, texture(tex, uv).r, 0);\n" \
+  "  color = vec3(texture(tex, uv).a, 0, 0);\n" \
   "}\n"
 
 absl::Status initResources() {
@@ -101,7 +101,7 @@ absl::Status initResources() {
   RETURN_IF_ERROR(
       ResourceLoader::Get().Add<RenderableMesh>("obj_rmesh", {"obj_mesh"}));
   RETURN_IF_ERROR(ResourceLoader::Get().Add<Texture>(
-      "texture", PngTexture::Load, {"col_smooth_8.png"}));
+      "texture", PngTexture::Load, {"col_smooth_16.png"}));
   RETURN_IF_ERROR(ResourceLoader::Get().Add<RenderableTexture>(
       "rtexture", {"texture", RenderableTexture::WrapMode::Repeat,
                    RenderableTexture::WrapMode::Repeat,

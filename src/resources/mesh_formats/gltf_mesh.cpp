@@ -583,23 +583,24 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
       continue;
     }
 
-    for (const nlohmann::json& primitive : *primitives_array) {
-      if (!primitive.is_object()) {
+    for (const nlohmann::json& primitive_json : *primitives_array) {
+      if (!primitive_json.is_object()) {
         return absl::InvalidArgumentError(
             "Invalid JSON data: primitive is not an object.");
       }
 
       std::shared_ptr<Mesh> mesh(new Mesh());
-      model->meshes[*mesh_name].push_back(mesh);
+      Primitive& primitive = model->primitives[*mesh_name].emplace_back();
+      primitive.mesh = mesh;
 
       ASSIGN_OR_RETURN((const nlohmann::json* attributes),
-                       GetObject(primitive, "attributes"));
+                       GetObject(primitive_json, "attributes"));
       {
         ASSIGN_OR_RETURN((const unsigned int position_accessor_id),
                          GetUnsignedInt(*attributes, "POSITION"));
         if (position_accessor_id >= accessors.size()) {
-          return absl::InvalidArgumentError(
-              STATUS_MESSAGE("Missing accessor: " << position_accessor_id));
+          return absl::InvalidArgumentError(STATUS_MESSAGE(
+              "Missing position accessor: " << position_accessor_id));
         }
         const Accessor& position_accessor = accessors[position_accessor_id];
         if (position_accessor.type != "VEC3" ||
@@ -627,7 +628,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
         } else {
           if (*texcoord_accessor_id >= accessors.size()) {
             return absl::InvalidArgumentError(STATUS_MESSAGE(
-                "Missing accessor: " << (*texcoord_accessor_id)));
+                "Missing texcoord accessor: " << (*texcoord_accessor_id)));
           }
           const Accessor& texcoord_accessor = accessors[*texcoord_accessor_id];
           if (texcoord_accessor.type != "VEC2") {
@@ -659,8 +660,8 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
           }
         } else {
           if (*colour_accessor_id >= accessors.size()) {
-            return absl::InvalidArgumentError(
-                STATUS_MESSAGE("Missing accessor: " << (*colour_accessor_id)));
+            return absl::InvalidArgumentError(STATUS_MESSAGE(
+                "Missing colour accessor: " << (*colour_accessor_id)));
           }
           const Accessor& colour_accessor = accessors[*colour_accessor_id];
           if (colour_accessor.type == "VEC3") {
@@ -704,8 +705,8 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
           }
         } else {
           if (*normal_accessor_id >= accessors.size()) {
-            return absl::InvalidArgumentError(
-                STATUS_MESSAGE("Missing accessor: " << (*normal_accessor_id)));
+            return absl::InvalidArgumentError(STATUS_MESSAGE(
+                "Missing normal accessor: " << (*normal_accessor_id)));
           }
           const Accessor& normal_accessor = accessors[*normal_accessor_id];
           if (normal_accessor.type != "VEC3" ||
@@ -739,8 +740,8 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
           }
         } else {
           if (*tangent_accessor_id >= accessors.size()) {
-            return absl::InvalidArgumentError(
-                STATUS_MESSAGE("Missing accessor: " << (*tangent_accessor_id)));
+            return absl::InvalidArgumentError(STATUS_MESSAGE(
+                "Missing tangent accessor: " << (*tangent_accessor_id)));
           }
           const Accessor& tangent_accessor = accessors[*tangent_accessor_id];
           if (tangent_accessor.type != "VEC4" ||
@@ -770,11 +771,11 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
       }
       {
         const absl::StatusOr<unsigned int> indices_accessor_id =
-            GetUnsignedInt(primitive, "indices");
+            GetUnsignedInt(primitive_json, "indices");
         if (indices_accessor_id.ok()) {
           if (*indices_accessor_id >= accessors.size()) {
-            return absl::InvalidArgumentError(
-                STATUS_MESSAGE("Missing accessor: " << (*indices_accessor_id)));
+            return absl::InvalidArgumentError(STATUS_MESSAGE(
+                "Missing indices accessor: " << (*indices_accessor_id)));
           }
           const Accessor& indices_accessor = accessors[*indices_accessor_id];
           if (indices_accessor.type != "SCALAR" ||
@@ -821,19 +822,97 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
           }
         }
       }
-      // TODO: Handle skinning.
+      {
+        const absl::StatusOr<unsigned int> bones_accessor_id =
+            GetUnsignedInt(*attributes, "JOINTS_0");
+        const absl::StatusOr<unsigned int> weights_accessor_id =
+            GetUnsignedInt(*attributes, "WEIGHTS_0");
+        if (bones_accessor_id.ok() != weights_accessor_id.ok()) {
+          if (!weights_accessor_id.ok()) {
+            return weights_accessor_id.status();
+          } else {
+            return bones_accessor_id.status();
+          }
+        } else if (bones_accessor_id.ok()) {
+          // If one is ok, then both are ok.
+          if (*bones_accessor_id >= accessors.size()) {
+            return absl::InvalidArgumentError(STATUS_MESSAGE(
+                "Missing bones accessor: " << (*bones_accessor_id)));
+          }
+          if (*weights_accessor_id >= accessors.size()) {
+            return absl::InvalidArgumentError(STATUS_MESSAGE(
+                "Missing weights accessor: " << (*weights_accessor_id)));
+          }
+          const Accessor& bones_accessor = accessors[*bones_accessor_id];
+          const Accessor& weights_accessor = accessors[*weights_accessor_id];
+          if (bones_accessor.type != "VEC4") {
+            return absl::InvalidArgumentError(STATUS_MESSAGE(
+                "Accessor " << (*bones_accessor_id)
+                            << " cannot be a bone accessor: wrong type"));
+          }
+          if (weights_accessor.type != "VEC4") {
+            return absl::InvalidArgumentError(STATUS_MESSAGE(
+                "Accessor " << (*weights_accessor_id)
+                            << " cannot be a weight accessor: wrong type"));
+          }
+          primitive.skin = std::shared_ptr<Skin>(new Skin());
+          if (bones_accessor.count != mesh->vertices.size()) {
+            return absl::InvalidArgumentError(
+                STATUS_MESSAGE("Wrong bone count. Expected "
+                               << mesh->vertices.size() << ", but got "
+                               << bones_accessor.count));
+          }
+          if (weights_accessor.count != mesh->vertices.size()) {
+            return absl::InvalidArgumentError(
+                STATUS_MESSAGE("Wrong weight count. Expected "
+                               << mesh->vertices.size() << ", but got "
+                               << weights_accessor.count));
+          }
+          primitive.skin->vertices.resize(mesh->vertices.size());
+          if (bones_accessor.component_type == ComponentType::UnsignedByte) {
+            ASSIGN_OR_RETURN(
+                (const std::vector<glm::vec<4, unsigned char>>& bones),
+                (ReadAccessor<unsigned char, 4>(buffers, buffer_views,
+                                                bones_accessor)));
+            for (unsigned int i = 0; i < mesh->vertices.size(); i++) {
+              primitive.skin->vertices[i].bone_indices = {
+                  bones[i].x, bones[i].y, bones[i].z, bones[i].w};
+            }
+          } else if (bones_accessor.component_type ==
+                     ComponentType::UnsignedShort) {
+            ASSIGN_OR_RETURN(
+                (const std::vector<glm::vec<4, unsigned short>>& bones),
+                (ReadAccessor<unsigned short, 4>(buffers, buffer_views,
+                                                 bones_accessor)));
+            for (unsigned int i = 0; i < mesh->vertices.size(); i++) {
+              primitive.skin->vertices[i].bone_indices = bones[i];
+            }
+          } else {
+            return absl::InvalidArgumentError(STATUS_MESSAGE(
+                "Accessor "
+                << (*bones_accessor_id)
+                << " cannot be a bones accessor: bad component type"));
+          }
+          ASSIGN_OR_RETURN(
+              (const std::vector<glm::vec4>& weights),
+              (ReadFloatAccessor<4>(buffers, buffer_views, weights_accessor)));
+          for (unsigned int i = 0; i < mesh->vertices.size(); i++) {
+            primitive.skin->vertices[i].weights = weights[i];
+          }
+        }
+      }
     }
   }
   return model;
 }
 
 absl::StatusOr<std::shared_ptr<Mesh>> GltfModel::LoadMesh(
-    const MeshDetails& details) {
+    const PrimitiveDetails& details) {
   ASSIGN_OR_RETURN((const std::shared_ptr<GltfModel> model),
                    details.model.Get());
 
-  const auto it = model->meshes.find(details.mesh_name);
-  if (it == model->meshes.end()) {
+  const auto it = model->primitives.find(details.mesh_name);
+  if (it == model->primitives.end()) {
     return absl::NotFoundError(
         STATUS_MESSAGE("No mesh named \"" << details.mesh_name << "\""));
   }
@@ -844,5 +923,31 @@ absl::StatusOr<std::shared_ptr<Mesh>> GltfModel::LoadMesh(
                                  << details.mesh_name << "\""));
   }
 
-  return it->second[details.index];
+  return it->second[details.index].mesh;
+}
+
+absl::StatusOr<std::shared_ptr<Skin>> GltfModel::LoadSkin(
+    const PrimitiveDetails& details) {
+  ASSIGN_OR_RETURN((const std::shared_ptr<GltfModel> model),
+                   details.model.Get());
+
+  const auto it = model->primitives.find(details.mesh_name);
+  if (it == model->primitives.end()) {
+    return absl::NotFoundError(
+        STATUS_MESSAGE("No mesh named \"" << details.mesh_name << "\""));
+  }
+
+  if (details.index >= it->second.size()) {
+    return absl::NotFoundError(STATUS_MESSAGE(
+        "No primitive at index " << details.index << " in mesh named \""
+                                 << details.mesh_name << "\""));
+  }
+
+  if (!it->second[details.index].skin) {
+    return absl::NotFoundError(
+        STATUS_MESSAGE("Primitive at index "
+                       << details.index << " in mesh named \""
+                       << details.mesh_name << "\" does not have a skin."));
+  }
+  return it->second[details.index].skin;
 }
