@@ -280,7 +280,7 @@ absl::StatusOr<std::shared_ptr<ObjModel>> ObjModel::Load(
                std::get<1>(face_element) == -1
                    ? glm::vec2(0, 0)
                    : tex_coord_pool[std::get<1>(face_element)],
-               glm::vec3(0, 0, 0)});
+               glm::vec4(0, 0, 0, 0), glm::vec3(0, 0, 0)});
           if (std::get<2>(face_element) == -1) {
             // Store that this vertex needs to be averaged.
             point_number_of_faces.insert(std::make_pair(

@@ -56,7 +56,7 @@ absl::StatusOr<std::shared_ptr<RenderableMesh>> RenderableMesh::Load(
                         (void*)offsetof(Mesh::Vertex, position));
   glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Mesh::Vertex),
                         (void*)offsetof(Mesh::Vertex, texCoord));
-  glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Mesh::Vertex),
+  glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(Mesh::Vertex),
                         (void*)offsetof(Mesh::Vertex, colour));
   glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Mesh::Vertex),
                         (void*)offsetof(Mesh::Vertex, normal));
