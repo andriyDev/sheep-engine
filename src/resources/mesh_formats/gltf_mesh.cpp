@@ -897,7 +897,13 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
               (const std::vector<glm::vec4>& weights),
               (ReadFloatAccessor<4>(buffers, buffer_views, weights_accessor)));
           for (unsigned int i = 0; i < mesh->vertices.size(); i++) {
-            primitive.skin->vertices[i].weights = weights[i];
+            float sum =
+                weights[i].x + weights[i].y + weights[i].z + weights[i].w;
+            if (sum == 0) {
+              sum = 1;
+            }
+            // Store normalized weights.
+            primitive.skin->vertices[i].weights = weights[i] / sum;
           }
         }
       }
