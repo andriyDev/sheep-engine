@@ -269,8 +269,8 @@ absl::StatusOr<BufferView> ParseBufferView(
                    GetUnsignedInt(buffer_view_json, "buffer"));
   ASSIGN_OR_RETURN((buffer_view.size),
                    GetUnsignedInt(buffer_view_json, "byteLength"));
-  ASSIGN_OR_RETURN((buffer_view.offset),
-                   GetUnsignedInt(buffer_view_json, "byteOffset"));
+  buffer_view.offset =
+      GetUnsignedInt(buffer_view_json, "byteOffset").value_or(0);
   buffer_view.stride =
       GetUnsignedInt(buffer_view_json, "byteStride").value_or(0);
   return buffer_view;
