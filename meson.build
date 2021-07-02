@@ -29,6 +29,7 @@ executable('sheep', [
   'src/resources/renderable_mesh.cpp',
   'src/resources/resource.cpp',
   'src/resources/shader.cpp',
+  'src/resources/skinned_mesh.cpp',
   'src/resources/texture.cpp',
   'src/resources/texture_formats/png_texture.cpp',
   'src/systems/input_system.cpp',

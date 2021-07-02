@@ -15,7 +15,6 @@ class RenderableMesh {
  public:
   struct Details {
     ResourceHandle<Mesh> mesh;
-    std::optional<ResourceHandle<Skin>> skin;
   };
   using detail_type = Details;
 
@@ -26,7 +25,7 @@ class RenderableMesh {
 
   void Draw();
 
- private:
+ protected:
   enum class Indexing { None, Small, Large };
 
   std::vector<GLuint> buffers;
