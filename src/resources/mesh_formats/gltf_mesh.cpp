@@ -6,6 +6,7 @@
 #include <glog/logging.h>
 
 #include <fstream>
+#include <glm/gtc/quaternion.hpp>
 #include <nlohmann/json.hpp>
 
 #include "utility/hton.h"
@@ -424,6 +425,98 @@ absl::Status ParseBuffer(const nlohmann::json& buffer_json,
   return absl::OkStatus();
 }
 
+struct GltfNode {
+  std::string name;
+  glm::vec3 position;
+  glm::quat rotation;
+  glm::vec3 scale;
+
+  std::vector<unsigned int> children;
+};
+
+absl::StatusOr<std::vector<GltfNode>> ParseNodes(const nlohmann::json& root) {
+  std::vector<GltfNode> result;
+  absl::StatusOr<const nlohmann::json*> nodes = GetArray(root, "nodes");
+  if (!nodes.ok()) {
+    return result;
+  }
+  for (const nlohmann::json& node_json : **nodes) {
+    if (!node_json.is_object()) {
+      return absl::InvalidArgumentError(
+          "Element in node array is not an object.");
+    }
+    GltfNode& new_node = result.emplace_back();
+    const absl::StatusOr<std::string> name = GetString(node_json, "name");
+    if (name.ok()) {
+      new_node.name = *name;
+    }
+    const absl::StatusOr<const nlohmann::json*> translation =
+        GetArray(node_json, "translation");
+    if (translation.ok()) {
+      if ((*translation)->size() != 3 || !(**translation)[0].is_number() ||
+          !(**translation)[1].is_number() || !(**translation)[2].is_number()) {
+        return absl::InvalidArgumentError(
+            "Translation element did not contain 3 numbers");
+      }
+      new_node.position.x = (**translation)[0].get<float>();
+      new_node.position.y = (**translation)[1].get<float>();
+      new_node.position.z = (**translation)[2].get<float>();
+    } else {
+      new_node.position = glm::vec3(0, 0, 0);
+    }
+    const absl::StatusOr<const nlohmann::json*> rotation =
+        GetArray(node_json, "rotation");
+    if (rotation.ok()) {
+      if ((*rotation)->size() != 4 || !(**rotation)[0].is_number() ||
+          !(**rotation)[1].is_number() || !(**rotation)[2].is_number() ||
+          !(**rotation)[3].is_number()) {
+        return absl::InvalidArgumentError(
+            "Rotation element did not contain 4 numbers");
+      }
+      new_node.rotation.x = (**rotation)[0].get<float>();
+      new_node.rotation.y = (**rotation)[1].get<float>();
+      new_node.rotation.z = (**rotation)[2].get<float>();
+      new_node.rotation.w = (**rotation)[3].get<float>();
+    } else {
+      new_node.rotation = glm::quat(1, 0, 0, 0);
+    }
+    const absl::StatusOr<const nlohmann::json*> scale =
+        GetArray(node_json, "scale");
+    if (scale.ok()) {
+      if ((*scale)->size() != 3 || !(**scale)[0].is_number() ||
+          !(**scale)[1].is_number() || !(**scale)[2].is_number()) {
+        return absl::InvalidArgumentError(
+            "Scale element did not contain 3 numbers");
+      }
+      new_node.scale.x = (**scale)[0].get<float>();
+      new_node.scale.y = (**scale)[1].get<float>();
+      new_node.scale.z = (**scale)[2].get<float>();
+    } else {
+      new_node.scale = glm::vec3(1, 1, 1);
+    }
+    const absl::StatusOr<const nlohmann::json*> children =
+        GetArray(node_json, "children");
+    if (children.ok()) {
+      for (const nlohmann::json& child_index : **children) {
+        if (!child_index.is_number_unsigned()) {
+          return absl::InvalidArgumentError(
+              "Child index is not an unsigned integer.");
+        }
+        unsigned int index = child_index.get<unsigned int>();
+        if (index >= (*nodes)->size()) {
+          return absl::InvalidArgumentError(
+              "Child index refers to non-existent node.");
+        }
+        if (index == result.size() - 1) {
+          return absl::InvalidArgumentError("Child index refers to self.");
+        }
+        new_node.children.push_back(index);
+      }
+    }
+  }
+  return result;
+}
+
 absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
     const Details& details) {
   std::ifstream file(details.file, std::ios_base::in | std::ios_base::binary);
@@ -523,6 +616,8 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
   if (!root.is_object()) {
     return absl::InvalidArgumentError("Root of glTF file is not an object");
   }
+
+  ASSIGN_OR_RETURN((const std::vector<GltfNode> nodes), ParseNodes(root));
 
   ASSIGN_OR_RETURN((const nlohmann::json* buffers_json_array),
                    GetArray(root, "buffers"));
