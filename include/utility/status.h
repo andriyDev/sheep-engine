@@ -3,6 +3,7 @@
 
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
+#include <glog/logging.h>
 
 #include <sstream>
 
@@ -20,6 +21,11 @@
   if (!__STATUS_NAME.ok()) {    \
     return __STATUS_NAME;       \
   }
+
+#define ASSIGN_CHECKED(var, value)                     \
+  auto __STATUS_NAME = (value);                        \
+  CHECK(__STATUS_NAME.ok()) << __STATUS_NAME.status(); \
+  UNPACK var = std::move(*__STATUS_NAME)
 
 // Creates string from `message` which is streamed to a stringstream.
 #define STATUS_MESSAGE(message) (std::stringstream() << message).str()

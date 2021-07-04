@@ -1,8 +1,11 @@
 
 #pragma once
 
+#include <memory>
+
 #include "nodes/transform.h"
 #include "resources/shader.h"
+#include "resources/skeleton.h"
 #include "resources/skinned_mesh.h"
 #include "systems/render_system.h"
 

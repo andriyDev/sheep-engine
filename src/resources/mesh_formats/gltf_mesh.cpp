@@ -641,9 +641,9 @@ absl::StatusOr<std::vector<std::shared_ptr<Skeleton>>> ParseSkeletons(
       Skeleton::Bone bone;
       const GltfNode& node = nodes[joint];
       bone.name = node.name;
-      bone.position = node.position;
-      bone.rotation = node.rotation;
-      bone.scale = node.scale;
+      bone.bind_pose.position = node.position;
+      bone.bind_pose.rotation = node.rotation;
+      bone.bind_pose.scale = node.scale;
       // Assign the nodes children even though they don't currently map
       // correctly to other bones.
       bone.children = node.children;

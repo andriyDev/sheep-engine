@@ -3,11 +3,19 @@
 
 #include <absl/container/flat_hash_map.h>
 
+#include "utility/status.h"
+
 Skeleton::Skeleton()
     : inverse_bind_matrices(
           [this]() { return this->ComputeInverseBindMatrices(); }) {}
 
-std::vector<glm::mat4> Skeleton::ComputeInverseBindMatrices() const {
+absl::StatusOr<std::vector<glm::mat4>> Skeleton::ComputePoseMatrices(
+    const std::vector<Bone::Pose>& poses) const {
+  if (poses.size() != bones.size()) {
+    return absl::InvalidArgumentError(STATUS_MESSAGE(
+        "Provided `poses` does not have same size as `bones`. Expected "
+        << bones.size() << " poses, but got " << poses.size()));
+  }
   absl::flat_hash_map<unsigned int, unsigned int> parent_map;
   for (unsigned int i = 0; i < bones.size(); i++) {
     const Bone& bone = bones[i];
@@ -16,10 +24,10 @@ std::vector<glm::mat4> Skeleton::ComputeInverseBindMatrices() const {
     }
   }
   absl::flat_hash_map<unsigned int, glm::mat4> matrix_map;
-  const auto compute_local_matrix = [this](unsigned int index) {
-    return glm::translate(glm::identity<glm::mat4>(), bones[index].position) *
-           glm::toMat4(bones[index].rotation) *
-           glm::scale(glm::identity<glm::mat4>(), bones[index].scale);
+  const auto compute_local_matrix = [this, &poses](unsigned int index) {
+    return glm::translate(glm::identity<glm::mat4>(), poses[index].position) *
+           glm::toMat4(poses[index].rotation) *
+           glm::scale(glm::identity<glm::mat4>(), poses[index].scale);
   };
   const std::function<glm::mat4(unsigned int)> compute_matrix =
       [&matrix_map, &parent_map, &compute_local_matrix,
@@ -39,7 +47,30 @@ std::vector<glm::mat4> Skeleton::ComputeInverseBindMatrices() const {
   std::vector<glm::mat4> matrices;
   matrices.reserve(bones.size());
   for (unsigned int i = 0; i < bones.size(); i++) {
-    matrices.push_back(glm::inverse(compute_matrix(i)));
+    matrices.push_back(compute_matrix(i));
+  }
+  return matrices;
+}
+
+absl::StatusOr<std::vector<glm::mat4>> Skeleton::ComputeRelativePoseMatrices(
+    const std::vector<Bone::Pose>& poses) const {
+  ASSIGN_OR_RETURN((std::vector<glm::mat4> matrices),
+                   ComputePoseMatrices(poses));
+  for (unsigned int i = 0; i < matrices.size(); i++) {
+    matrices[i] = matrices[i] * (*inverse_bind_matrices)[i];
+  }
+  return matrices;
+}
+
+std::vector<glm::mat4> Skeleton::ComputeInverseBindMatrices() const {
+  std::vector<Bone::Pose> poses;
+  poses.reserve(bones.size());
+  for (const Bone& bones : bones) {
+    poses.push_back(bones.bind_pose);
+  }
+  ASSIGN_CHECKED((std::vector<glm::mat4> matrices), ComputePoseMatrices(poses));
+  for (glm::mat4& matrix : matrices) {
+    matrix = glm::inverse(matrix);
   }
   return matrices;
 }
