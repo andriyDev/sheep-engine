@@ -474,11 +474,14 @@ struct GltfNode {
   std::vector<unsigned int> children;
 };
 
-absl::StatusOr<std::vector<GltfNode>> ParseNodes(const nlohmann::json& root) {
+absl::StatusOr<std::pair<std::vector<GltfNode>,
+                         absl::flat_hash_map<unsigned int, unsigned int>>>
+ParseNodes(const nlohmann::json& root) {
   std::vector<GltfNode> result;
+  absl::flat_hash_map<unsigned int, unsigned int> skin_mapping;
   absl::StatusOr<const nlohmann::json*> nodes = GetArray(root, "nodes");
   if (!nodes.ok()) {
-    return result;
+    return std::make_pair(result, skin_mapping);
   }
   for (const nlohmann::json& node_json : **nodes) {
     if (!node_json.is_object()) {
@@ -553,6 +556,12 @@ absl::StatusOr<std::vector<GltfNode>> ParseNodes(const nlohmann::json& root) {
         new_node.children.push_back(index);
       }
     }
+
+    const absl::StatusOr<unsigned int> mesh = GetUnsignedInt(node_json, "mesh");
+    const absl::StatusOr<unsigned int> skin = GetUnsignedInt(node_json, "skin");
+    if (mesh.ok() && skin.ok()) {
+      skin_mapping.insert(std::make_pair(*mesh, *skin));
+    }
   }
 
   // We must ensure there are no cycles or nodes with multiple parents.
@@ -590,7 +599,7 @@ absl::StatusOr<std::vector<GltfNode>> ParseNodes(const nlohmann::json& root) {
     }
   }
 
-  return result;
+  return std::make_pair(result, skin_mapping);
 }
 
 struct GltfSkeleton {
@@ -842,17 +851,18 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
     ASSIGN_OR_RETURN((accessors.emplace_back()), ParseAccessor(accessor_json));
   }
 
-  ASSIGN_OR_RETURN((const std::vector<GltfNode> nodes), ParseNodes(root));
-  ASSIGN_OR_RETURN(
-      (const std::vector<GltfSkeleton> skeletons),
-      ParseSkeletons(root, nodes, buffers, buffer_views, accessors));
+  ASSIGN_OR_RETURN((const auto& node_data), ParseNodes(root));
+  ASSIGN_OR_RETURN((const std::vector<GltfSkeleton>& skeletons),
+                   (ParseSkeletons(root, node_data.first, buffers, buffer_views,
+                                   accessors)));
 
   std::shared_ptr<GltfModel> model(new GltfModel());
 
   ASSIGN_OR_RETURN((const nlohmann::json* meshes_array),
                    GetArray(root, "meshes"));
 
-  for (const nlohmann::json& mesh : *meshes_array) {
+  for (unsigned int i = 0; i < meshes_array->size(); i++) {
+    const nlohmann::json& mesh = (*meshes_array)[i];
     if (!mesh.is_object()) {
       return absl::InvalidArgumentError(
           "Invalid JSON data: mesh is not an object.");
@@ -862,6 +872,19 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
     // Failing to find a name is fine - just skip the mesh.
     if (!mesh_name.ok()) {
       continue;
+    }
+
+    std::shared_ptr<Skeleton> skeleton;
+    {
+      const auto it = node_data.second.find(i);
+      if (it != node_data.second.end()) {
+        skeleton = std::shared_ptr<Skeleton>(new Skeleton());
+        skeleton->inverse_bind_matrices.reserve(
+            skeletons[it->second].joints.size());
+        for (const GltfSkeleton::Joint& joint : skeletons[it->second].joints) {
+          skeleton->inverse_bind_matrices.push_back(joint.inverse_bind_matrix);
+        }
+      }
     }
 
     ASSIGN_OR_RETURN((const nlohmann::json* primitives_array),
@@ -1109,7 +1132,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
           }
         }
       }
-      {
+      if (skeleton) {
         const absl::StatusOr<unsigned int> bones_accessor_id =
             GetUnsignedInt(*attributes, "JOINTS_0");
         const absl::StatusOr<unsigned int> weights_accessor_id =
@@ -1143,6 +1166,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
                             << " cannot be a weight accessor: wrong type"));
           }
           primitive.skin = std::shared_ptr<Skin>(new Skin());
+          primitive.skin->skeleton = skeleton;
           if (bones_accessor.count != mesh->vertices.size()) {
             return absl::InvalidArgumentError(
                 STATUS_MESSAGE("Wrong bone count. Expected "
