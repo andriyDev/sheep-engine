@@ -514,6 +514,42 @@ absl::StatusOr<std::vector<GltfNode>> ParseNodes(const nlohmann::json& root) {
       }
     }
   }
+
+  // We must ensure there are no cycles or nodes with multiple parents.
+
+  absl::flat_hash_map<unsigned int, bool> visited_is_root;
+  const std::function<absl::Status(unsigned int)> explore =
+      [&visited_is_root, &result,
+       &explore](unsigned int index) -> absl::Status {
+    auto [it, inserted] = visited_is_root.insert(std::make_pair(index, false));
+    if (!inserted) {
+      if (it->second) {
+        it->second = false;
+        return absl::OkStatus();
+      } else {
+        return absl::InvalidArgumentError(
+            "Node heirarchy has cycle or node with multiple parents.");
+      }
+    }
+
+    for (const unsigned int child : result[index].children) {
+      RETURN_IF_ERROR(explore(child));
+    }
+    return absl::OkStatus();
+  };
+
+  for (unsigned int i = 0; i < result.size(); i++) {
+    auto [_, inserted] = visited_is_root.insert(std::make_pair(i, true));
+    // If we didn't insert true, the node was already visited, so it is marked
+    // as non-root anyway.
+    if (!inserted) {
+      continue;
+    }
+    for (const unsigned int child : result[i].children) {
+      RETURN_IF_ERROR(explore(child));
+    }
+  }
+
   return result;
 }
 
