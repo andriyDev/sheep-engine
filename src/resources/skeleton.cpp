@@ -9,6 +9,15 @@ Skeleton::Skeleton()
     : inverse_bind_matrices(
           [this]() { return this->ComputeInverseBindMatrices(); }) {}
 
+std::vector<Skeleton::Bone::Pose> Skeleton::GetBindPose() const {
+  std::vector<Bone::Pose> pose;
+  pose.reserve(bones.size());
+  for (const Bone& bone : bones) {
+    pose.push_back(bone.bind_pose);
+  }
+  return pose;
+}
+
 absl::StatusOr<std::vector<glm::mat4>> Skeleton::ComputePoseMatrices(
     const std::vector<Bone::Pose>& poses) const {
   if (poses.size() != bones.size()) {
@@ -63,12 +72,8 @@ absl::StatusOr<std::vector<glm::mat4>> Skeleton::ComputeRelativePoseMatrices(
 }
 
 std::vector<glm::mat4> Skeleton::ComputeInverseBindMatrices() const {
-  std::vector<Bone::Pose> poses;
-  poses.reserve(bones.size());
-  for (const Bone& bones : bones) {
-    poses.push_back(bones.bind_pose);
-  }
-  ASSIGN_CHECKED((std::vector<glm::mat4> matrices), ComputePoseMatrices(poses));
+  ASSIGN_CHECKED((std::vector<glm::mat4> matrices),
+                 ComputePoseMatrices(GetBindPose()));
   for (glm::mat4& matrix : matrices) {
     matrix = glm::inverse(matrix);
   }

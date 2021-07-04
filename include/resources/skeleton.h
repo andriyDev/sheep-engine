@@ -25,6 +25,8 @@ class Skeleton {
 
   Skeleton();
 
+  std::vector<Bone::Pose> GetBindPose() const;
+
   absl::StatusOr<std::vector<glm::mat4>> ComputePoseMatrices(
       const std::vector<Bone::Pose>& poses) const;
 
