@@ -46,6 +46,8 @@ class Program {
   void Use();
 
   GLuint GetUniformLocation(const std::string& name) const;
+  GLuint GetUniformBlockIndex(const std::string& name) const;
+  void SetUniformBlockBinding(GLuint block_index, GLuint block_binding);
 
  private:
   GLuint id = 0;

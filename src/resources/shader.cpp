@@ -113,3 +113,11 @@ void Program::Use() { glUseProgram(id); }
 GLuint Program::GetUniformLocation(const std::string& name) const {
   return glGetUniformLocation(id, name.c_str());
 }
+
+GLuint Program::GetUniformBlockIndex(const std::string& name) const {
+  return glGetUniformBlockIndex(id, name.c_str());
+}
+
+void Program::SetUniformBlockBinding(GLuint block_index, GLuint block_binding) {
+  glUniformBlockBinding(id, block_index, block_binding);
+}

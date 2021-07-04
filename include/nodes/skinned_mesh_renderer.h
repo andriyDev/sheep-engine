@@ -2,6 +2,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 #include "nodes/transform.h"
 #include "resources/shader.h"
@@ -17,6 +18,8 @@ class SkinnedMeshRenderer : public Transform, public Renderable {
   };
   std::vector<MeshInfo> meshes;
 
+  virtual ~SkinnedMeshRenderer();
+
   void SetSkeleton(const std::shared_ptr<Skeleton>& new_skeleton);
   const std::shared_ptr<Skeleton>& GetSkeleton() const;
 
@@ -26,4 +29,6 @@ class SkinnedMeshRenderer : public Transform, public Renderable {
               const glm::mat4& ProjectionView) override;
 
   std::shared_ptr<Skeleton> skeleton;
+  GLuint pose_buffer = 0;
+  bool rebuild_pose_buffer = true;
 };

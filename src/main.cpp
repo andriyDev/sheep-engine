@@ -14,12 +14,14 @@
 
 #include "engine.h"
 #include "nodes/mesh_renderer.h"
+#include "nodes/skinned_mesh_renderer.h"
 #include "nodes/transform.h"
 #include "resources/mesh_formats/gltf_mesh.h"
 #include "resources/mesh_formats/obj_mesh.h"
 #include "resources/renderable_mesh.h"
 #include "resources/resource.h"
 #include "resources/shader.h"
+#include "resources/skinned_mesh.h"
 #include "resources/texture_formats/png_texture.h"
 #include "systems/input_system.h"
 #include "systems/render_system.h"
@@ -49,18 +51,32 @@ std::shared_ptr<Mesh> squareMesh() {
   return source_mesh;
 }
 
-#define VERTEX_SHADER                            \
-  "#version 330 core\n"                          \
-  "layout(location = 0) in vec3 position;\n"     \
-  "layout(location = 1) in vec2 vert_uv;\n"      \
-  "layout(location = 3) in vec3 normal;\n"       \
-  "uniform mat4 MVP;\n"                          \
-  "out vec3 normal_frag;\n"                      \
-  "out vec2 uv;\n"                               \
-  "void main() {\n"                              \
-  "  gl_Position = MVP * vec4(position, 1.0);\n" \
-  "  normal_frag = normal;\n"                    \
-  "  uv = vert_uv;\n"                            \
+#define VERTEX_SHADER                                             \
+  "#version 330 core\n"                                           \
+  "layout(location = 0) in vec3 position;\n"                      \
+  "layout(location = 1) in vec2 vert_uv;\n"                       \
+  "layout(location = 3) in vec3 normal;\n"                        \
+  "layout(location = 6) in vec4 bone_weights;\n"                  \
+  "layout(location = 7) in ivec4 bones;\n"                        \
+  "uniform mat4 MVP;\n"                                           \
+  "layout(std140) uniform Bones {\n"                              \
+  "  mat4 pose_data[256];\n"                                      \
+  "};\n"                                                          \
+  "out vec3 normal_frag;\n"                                       \
+  "out vec2 uv;\n"                                                \
+  "vec4 apply_pose(vec4 point, vec4 weights, ivec4 indices) {\n"  \
+  "  //return point;\n"                                           \
+  "  return (pose_data[indices.x] * point) * bone_weights.x\n"    \
+  "    + (pose_data[indices.y] * point) * bone_weights.y\n"       \
+  "    + (pose_data[indices.z] * point) * bone_weights.z\n"       \
+  "    + (pose_data[indices.w] * point) * bone_weights.w;\n"      \
+  "}\n"                                                           \
+  "void main() {\n"                                               \
+  "  gl_Position = MVP * vec4(apply_pose(\n"                      \
+  "    vec4(position, 1.0), bone_weights, bones).xyz, 1.0);\n"    \
+  "  normal_frag = (MVP * vec4(apply_pose(\n"                     \
+  "    vec4(normal, 0.0), bone_weights, bones).xyz, 0.0)).xyz;\n" \
+  "  uv = vert_uv;\n"                                             \
   "}\n"
 #define FRAGMENT_SHADER                         \
   "#version 330 core\n"                         \
@@ -109,11 +125,13 @@ absl::Status initResources() {
                    RenderableTexture::FilterMode::Linear, false}));
 
   RETURN_IF_ERROR(
-      ResourceLoader::Get().Add<GltfModel>("gltf_model", {"gltf.gltf"}));
+      ResourceLoader::Get().Add<GltfModel>("gltf_model", {"wraith.glb"}));
   RETURN_IF_ERROR(ResourceLoader::Get().Add<Mesh>(
-      "gltf_mesh", GltfModel::LoadMesh, {"gltf_model", "Cube", 0}));
-  RETURN_IF_ERROR(
-      ResourceLoader::Get().Add<RenderableMesh>("gltf_rmesh", {"gltf_mesh"}));
+      "gltf_mesh", GltfModel::LoadMesh, {"gltf_model", "body", 0}));
+  RETURN_IF_ERROR(ResourceLoader::Get().Add<Skin>(
+      "gltf_skin", GltfModel::LoadSkin, {"gltf_model", "body", 0}));
+  RETURN_IF_ERROR(ResourceLoader::Get().Add<SkinnedMesh>(
+      "gltf_smesh", {"gltf_mesh", "gltf_skin"}));
 
   return absl::OkStatus();
 }
@@ -276,8 +294,11 @@ int main(int argc, char* argv[]) {
   std::shared_ptr<Transform> camera_pivot;
   std::shared_ptr<Camera> camera;
   {
-    std::shared_ptr<MeshRenderer> mesh_renderer(new MeshRenderer());
+    std::shared_ptr<SkinnedMeshRenderer> mesh_renderer(
+        new SkinnedMeshRenderer());
     mesh_renderer->AttachTo(world->GetRoot());
+    mesh_renderer->SetScale(glm::vec3(3, 3, 3));
+    mesh_renderer->SetRotation(FromEuler(glm::vec3(-90, 90, 0)));
 
     const absl::StatusOr<std::shared_ptr<Program>> material =
         ResourceLoader::Get().Load<Program>("main_program");
@@ -287,6 +308,8 @@ int main(int argc, char* argv[]) {
     }
     (*material)->Use();
     glUniform1i((*material)->GetUniformLocation("tex"), 0);
+    (*material)->SetUniformBlockBinding(
+        (*material)->GetUniformBlockIndex("Bones"), 0);
 
     const absl::StatusOr<std::shared_ptr<RenderableTexture>> texture_status =
         ResourceLoader::Get().Load<RenderableTexture>("rtexture");
@@ -297,13 +320,14 @@ int main(int argc, char* argv[]) {
     texture = *texture_status;
     texture->Use(0);
 
-    const absl::StatusOr<std::shared_ptr<RenderableMesh>> mesh =
-        ResourceLoader::Get().Load<RenderableMesh>("gltf_rmesh");
+    const absl::StatusOr<std::shared_ptr<SkinnedMesh>> mesh =
+        ResourceLoader::Get().Load<SkinnedMesh>("gltf_smesh");
     if (!mesh.ok()) {
-      LOG(FATAL) << "Failed to load \"gltf_rmesh\": " << mesh.status();
+      LOG(FATAL) << "Failed to load \"gltf_smesh\": " << mesh.status();
       return 1;
     }
     mesh_renderer->meshes.push_back({*mesh, *material});
+    mesh_renderer->SetSkeleton((*mesh)->GetSkeleton());
 
     camera_pivot = std::shared_ptr<Transform>(new Transform());
     camera = std::shared_ptr<Camera>(new Camera());
