@@ -19,6 +19,9 @@ struct Cached {
   // the value.
   const ContainedType& Get() const;
 
+  // Sets the value of the cache to `value`.
+  void Set(const ContainedType& value);
+
   const ContainedType& operator*() const { return Get(); }
   const ContainedType* operator->() const { return &Get(); };
 
@@ -47,4 +50,11 @@ const ContainedType& Cached<ContainedType, clear_on_invalidate>::Get() const {
   data = compute_function();
   valid = true;
   return data;
+}
+
+template <typename ContainedType, bool clear_on_invalidate>
+void Cached<ContainedType, clear_on_invalidate>::Set(
+    const ContainedType& value) {
+  data = value;
+  valid = true;
 }
