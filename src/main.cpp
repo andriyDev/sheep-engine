@@ -303,8 +303,7 @@ int main(int argc, char* argv[]) {
       LOG(FATAL) << "Failed to load \"gltf_rmesh\": " << mesh.status();
       return 1;
     }
-    mesh_renderer->mesh = *mesh;
-    mesh_renderer->material = *material;
+    mesh_renderer->meshes.push_back({*mesh, *material});
 
     camera_pivot = std::shared_ptr<Transform>(new Transform());
     camera = std::shared_ptr<Camera>(new Camera());

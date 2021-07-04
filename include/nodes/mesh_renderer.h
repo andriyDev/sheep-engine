@@ -10,8 +10,11 @@
 
 class MeshRenderer : public Transform, public Renderable {
  public:
-  std::shared_ptr<RenderableMesh> mesh;
-  std::shared_ptr<Program> material;
+  struct MeshInfo {
+    std::shared_ptr<RenderableMesh> mesh;
+    std::shared_ptr<Program> material;
+  };
+  std::vector<MeshInfo> meshes;
 
  protected:
   void Render(const std::shared_ptr<RenderSuperSystem>& super_system,
