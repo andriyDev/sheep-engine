@@ -602,21 +602,12 @@ ParseNodes(const nlohmann::json& root) {
   return std::make_pair(result, skin_mapping);
 }
 
-struct GltfSkeleton {
-  std::string name;
-  struct Joint {
-    unsigned int index;
-    glm::mat4 inverse_bind_matrix;
-  };
-  std::vector<Joint> joints;
-};
-
-absl::StatusOr<std::vector<GltfSkeleton>> ParseSkeletons(
+absl::StatusOr<std::vector<std::shared_ptr<Skeleton>>> ParseSkeletons(
     const nlohmann::json& root, const std::vector<GltfNode>& nodes,
     const std::vector<std::vector<unsigned char>>& buffers,
     const std::vector<BufferView>& buffer_views,
     const std::vector<Accessor>& accessors) {
-  std::vector<GltfSkeleton> result;
+  std::vector<std::shared_ptr<Skeleton>> result;
   const absl::StatusOr<const nlohmann::json*> skins = GetArray(root, "skins");
   if (!skins.ok()) {
     return result;
@@ -626,16 +617,14 @@ absl::StatusOr<std::vector<GltfSkeleton>> ParseSkeletons(
       return absl::InvalidArgumentError(
           "Element in skin array is not an object.");
     }
-    GltfSkeleton& skeleton = result.emplace_back();
-    const absl::StatusOr<std::string> name = GetString(skin_json, "name");
-    if (name.ok()) {
-      skeleton.name = *name;
-    }
+    std::shared_ptr<Skeleton>& skeleton = result.emplace_back(new Skeleton());
     ASSIGN_OR_RETURN((const nlohmann::json* joints_json),
                      GetArray(skin_json, "joints"));
     if (joints_json->size() == 0) {
       return absl::InvalidArgumentError("Joints cannot be empty.");
     }
+    std::vector<unsigned int> joint_nodes;
+    absl::flat_hash_map<unsigned int, unsigned int> remapped_joints;
     for (const nlohmann::json& joint_json : *joints_json) {
       if (!joint_json.is_number_unsigned()) {
         return absl::InvalidArgumentError(
@@ -645,7 +634,32 @@ absl::StatusOr<std::vector<GltfSkeleton>> ParseSkeletons(
       if (joint >= nodes.size()) {
         return absl::InvalidArgumentError("Joint refers to invalid node.");
       }
-      skeleton.joints.push_back({joint});
+      // Map the node number to the index in the skeleton's joints.
+      remapped_joints.insert_or_assign(joint, (unsigned int)joint_nodes.size());
+      joint_nodes.push_back(joint);
+      // Store node data into bone data.
+      Skeleton::Bone bone;
+      const GltfNode& node = nodes[joint];
+      bone.name = node.name;
+      bone.position = node.position;
+      bone.rotation = node.rotation;
+      bone.scale = node.scale;
+      // Assign the nodes children even though they don't currently map
+      // correctly to other bones.
+      bone.children = node.children;
+      skeleton->bones.push_back(bone);
+    }
+    // Go through each bone to remap its child nodes to actual bone indices.
+    for (Skeleton::Bone& bone : skeleton->bones) {
+      for (int i = bone.children.size() - 1; i >= 0; i--) {
+        const auto it = remapped_joints.find(bone.children[i]);
+        // If there is no bone mapping, this is an unrelated node so erase it.
+        if (it == remapped_joints.end()) {
+          bone.children.erase(bone.children.begin() + i);
+        } else {
+          bone.children[i] = it->second;
+        }
+      }
     }
     const absl::StatusOr<unsigned int> inverse_bind_matrices_id =
         GetUnsignedInt(skin_json, "inverseBindMatrices");
@@ -658,58 +672,11 @@ absl::StatusOr<std::vector<GltfSkeleton>> ParseSkeletons(
       ASSIGN_OR_RETURN((const std::vector<glm::mat4>& inverse_bind_matrices),
                        ReadMat4Accessor(buffers, buffer_views,
                                         accessors[*inverse_bind_matrices_id]));
-      if (inverse_bind_matrices.size() != skeleton.joints.size()) {
+      if (inverse_bind_matrices.size() != skeleton->bones.size()) {
         return absl::InvalidArgumentError(
             "Inverse bind matrices do not have same size as joints.");
       }
-
-      for (int i = 0; i < skeleton.joints.size(); i++) {
-        skeleton.joints[i].inverse_bind_matrix = inverse_bind_matrices[i];
-      }
-    } else {
-      absl::flat_hash_map<unsigned int, unsigned int> parent_map;
-      // For each node go through its children and refer the child to the
-      // parent. Note this will collect unneeded entries, but they will be
-      // ignored anyway.
-      for (const GltfSkeleton::Joint& joint : skeleton.joints) {
-        const GltfNode& node = nodes[joint.index];
-        for (unsigned int child : node.children) {
-          parent_map.insert(std::make_pair(child, joint.index));
-        }
-      }
-      absl::flat_hash_map<unsigned int, glm::mat4> matrix_map;
-      const auto compute_local_matrix = [&nodes](unsigned int index) {
-        return glm::translate(glm::identity<glm::mat4>(),
-                              nodes[index].position) *
-               glm::toMat4(nodes[index].rotation) *
-               glm::scale(glm::identity<glm::mat4>(), nodes[index].scale);
-      };
-      int root_count = 0;
-      const std::function<glm::mat4(unsigned int)> compute_matrix =
-          [&matrix_map, &parent_map, &compute_local_matrix, &compute_matrix,
-           &root_count](unsigned int index) -> glm::mat4 {
-        const auto matrix_it = matrix_map.find(index);
-        if (matrix_it != matrix_map.end()) {
-          return matrix_it->second;
-        }
-        glm::mat4 new_matrix = compute_local_matrix(index);
-        const auto parent_it = parent_map.find(index);
-        if (parent_it == parent_map.end()) {
-          root_count++;
-        } else {
-          new_matrix = compute_matrix(parent_it->second) * new_matrix;
-        }
-        matrix_map.insert(std::make_pair(index, new_matrix));
-        return new_matrix;
-      };
-      for (unsigned int i = 0; i < skeleton.joints.size(); i++) {
-        skeleton.joints[i].inverse_bind_matrix =
-            glm::inverse(compute_matrix(i));
-      }
-      if (root_count != 1) {
-        return absl::InvalidArgumentError(
-            "Expected exactly one root node for skeleton but got more!");
-      }
+      skeleton->inverse_bind_matrices.Set(inverse_bind_matrices);
     }
   }
   return result;
@@ -852,7 +819,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
   }
 
   ASSIGN_OR_RETURN((const auto& node_data), ParseNodes(root));
-  ASSIGN_OR_RETURN((const std::vector<GltfSkeleton>& skeletons),
+  ASSIGN_OR_RETURN((const std::vector<std::shared_ptr<Skeleton>>& skeletons),
                    (ParseSkeletons(root, node_data.first, buffers, buffer_views,
                                    accessors)));
 
@@ -878,12 +845,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
     {
       const auto it = node_data.second.find(i);
       if (it != node_data.second.end()) {
-        skeleton = std::shared_ptr<Skeleton>(new Skeleton());
-        skeleton->inverse_bind_matrices.reserve(
-            skeletons[it->second].joints.size());
-        for (const GltfSkeleton::Joint& joint : skeletons[it->second].joints) {
-          skeleton->inverse_bind_matrices.push_back(joint.inverse_bind_matrix);
-        }
+        skeleton = skeletons[it->second];
       }
     }
 
