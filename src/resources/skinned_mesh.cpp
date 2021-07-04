@@ -80,7 +80,11 @@ absl::StatusOr<std::shared_ptr<SkinnedMesh>> SkinnedMesh::Load(
                    source_mesh->triangles.data(), GL_STATIC_DRAW);
     }
   }
+
+  new_mesh->skeleton = source_skin->skeleton;
   return new_mesh;
 }
 
 void SkinnedMesh::DrawSkinned() { Draw(); }
+
+std::shared_ptr<Skeleton> SkinnedMesh::GetSkeleton() const { return skeleton; }

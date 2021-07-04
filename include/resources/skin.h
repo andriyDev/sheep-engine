@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 
+#include "resources/skeleton.h"
 #include "utility/resource_handle.h"
 
 class Skin {
@@ -18,4 +19,5 @@ class Skin {
   };
 
   std::vector<Vertex> vertices;
+  std::shared_ptr<Skeleton> skeleton;
 };

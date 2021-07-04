@@ -15,4 +15,9 @@ class SkinnedMesh : public RenderableMesh {
       const Details& details);
 
   void DrawSkinned();
+
+  std::shared_ptr<Skeleton> GetSkeleton() const;
+
+ private:
+  std::shared_ptr<Skeleton> skeleton;
 };
