@@ -1,9 +1,7 @@
 
-#include "nodes/mesh_renderer.h"
+#include "nodes/skinned_mesh_renderer.h"
 
-#include <glm/gtx/string_cast.hpp>
-
-void MeshRenderer::Render(
+void SkinnedMeshRenderer::Render(
     const std::shared_ptr<RenderSuperSystem>& super_system,
     const std::shared_ptr<RenderSystem>& system,
     const glm::mat4& ProjectionView) {
@@ -13,5 +11,5 @@ void MeshRenderer::Render(
   material->Use();
   const glm::mat4 mvp = ProjectionView * GetGlobalMatrix();
   glUniformMatrix4fv(material->GetUniformLocation("MVP"), 1, false, &mvp[0][0]);
-  mesh->Draw();
+  mesh->DrawSkinned();
 }

@@ -21,6 +21,7 @@ executable('sheep', [
   'src/main.cpp',
   'src/nodes/camera.cpp',
   'src/nodes/mesh_renderer.cpp',
+  'src/nodes/skinned_mesh_renderer.cpp',
   'src/nodes/node.cpp',
   'src/nodes/transform.cpp',
   'src/nodes/utility.cpp',
