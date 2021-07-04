@@ -6,7 +6,7 @@
 #include <glog/logging.h>
 
 #include <fstream>
-#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/quaternion.hpp>
 #include <nlohmann/json.hpp>
 
 #include "utility/hton.h"
@@ -261,6 +261,46 @@ absl::StatusOr<std::vector<glm::vec<components, float>>> ReadFloatAccessor(
       return absl::InvalidArgumentError(
           "Accessor has bad component type - cannot be float accessor.");
   }
+}
+
+absl::StatusOr<std::vector<glm::mat4>> ReadMat4Accessor(
+    const std::vector<std::vector<uint8_t>>& buffers,
+    const std::vector<BufferView>& buffer_views, const Accessor& accessor) {
+  if (accessor.type != "MAT4" ||
+      accessor.component_type != ComponentType::Float) {
+    return absl::InvalidArgumentError(
+        "Accessor has bad type or component type - cannot be mat4 accessor.");
+  }
+  std::vector<glm::mat4> result;
+  result.resize(accessor.count);
+  if (!accessor.buffer_view.has_value()) {
+    // TODO: Handle sparse accessors.
+    return result;
+  }
+
+  const BufferView& buffer_view = buffer_views[*accessor.buffer_view];
+  const std::vector<unsigned char>& buffer = buffers[buffer_view.buffer];
+  unsigned int byte_start = buffer_view.offset + accessor.byte_offset;
+  unsigned int byte_end = std::min((unsigned int)buffer.size(),
+                                   buffer_view.offset + buffer_view.size);
+  unsigned int byte_stride =
+      buffer_view.stride == 0 ? sizeof(glm::mat4) : buffer_view.stride;
+  if (byte_start + byte_stride * accessor.count > byte_end) {
+    return absl::InvalidArgumentError(STATUS_MESSAGE(
+        "Accessor requested bytes that are out of range of buffer (view). "
+        "Requested range "
+        << byte_start << "-" << (byte_start + byte_stride * accessor.count)
+        << " but buffer ends at " << byte_end));
+  }
+  float* result_i = (float*)result.data();
+  for (unsigned int i = 0, byte_index = byte_start; i < accessor.count;
+       ++i, byte_index += byte_stride, result_i += 16) {
+    memcpy(result_i, buffer.data() + byte_index, sizeof(glm::mat4));
+    for (unsigned int component = 0; component < 16; ++component) {
+      result_i[component] = ltoh(result_i[component]);
+    }
+  }
+  return result;
 }
 
 absl::StatusOr<BufferView> ParseBufferView(
@@ -553,6 +593,119 @@ absl::StatusOr<std::vector<GltfNode>> ParseNodes(const nlohmann::json& root) {
   return result;
 }
 
+struct GltfSkeleton {
+  std::string name;
+  struct Joint {
+    unsigned int index;
+    glm::mat4 inverse_bind_matrix;
+  };
+  std::vector<Joint> joints;
+};
+
+absl::StatusOr<std::vector<GltfSkeleton>> ParseSkeletons(
+    const nlohmann::json& root, const std::vector<GltfNode>& nodes,
+    const std::vector<std::vector<unsigned char>>& buffers,
+    const std::vector<BufferView>& buffer_views,
+    const std::vector<Accessor>& accessors) {
+  std::vector<GltfSkeleton> result;
+  const absl::StatusOr<const nlohmann::json*> skins = GetArray(root, "skins");
+  if (!skins.ok()) {
+    return result;
+  }
+  for (const nlohmann::json& skin_json : **skins) {
+    if (!skin_json.is_object()) {
+      return absl::InvalidArgumentError(
+          "Element in skin array is not an object.");
+    }
+    GltfSkeleton& skeleton = result.emplace_back();
+    const absl::StatusOr<std::string> name = GetString(skin_json, "name");
+    if (name.ok()) {
+      skeleton.name = *name;
+    }
+    ASSIGN_OR_RETURN((const nlohmann::json* joints_json),
+                     GetArray(skin_json, "joints"));
+    if (joints_json->size() == 0) {
+      return absl::InvalidArgumentError("Joints cannot be empty.");
+    }
+    for (const nlohmann::json& joint_json : *joints_json) {
+      if (!joint_json.is_number_unsigned()) {
+        return absl::InvalidArgumentError(
+            "Joint index is not an unsigned integer.");
+      }
+      unsigned int joint = joint_json.get<unsigned int>();
+      if (joint >= nodes.size()) {
+        return absl::InvalidArgumentError("Joint refers to invalid node.");
+      }
+      skeleton.joints.push_back({joint});
+    }
+    const absl::StatusOr<unsigned int> inverse_bind_matrices_id =
+        GetUnsignedInt(skin_json, "inverseBindMatrices");
+    if (inverse_bind_matrices_id.ok()) {
+      if (*inverse_bind_matrices_id >= accessors.size()) {
+        return absl::InvalidArgumentError(
+            STATUS_MESSAGE("Missing inverse bind matrix accessor: "
+                           << *inverse_bind_matrices_id));
+      }
+      ASSIGN_OR_RETURN((const std::vector<glm::mat4>& inverse_bind_matrices),
+                       ReadMat4Accessor(buffers, buffer_views,
+                                        accessors[*inverse_bind_matrices_id]));
+      if (inverse_bind_matrices.size() != skeleton.joints.size()) {
+        return absl::InvalidArgumentError(
+            "Inverse bind matrices do not have same size as joints.");
+      }
+
+      for (int i = 0; i < skeleton.joints.size(); i++) {
+        skeleton.joints[i].inverse_bind_matrix = inverse_bind_matrices[i];
+      }
+    } else {
+      absl::flat_hash_map<unsigned int, unsigned int> parent_map;
+      // For each node go through its children and refer the child to the
+      // parent. Note this will collect unneeded entries, but they will be
+      // ignored anyway.
+      for (const GltfSkeleton::Joint& joint : skeleton.joints) {
+        const GltfNode& node = nodes[joint.index];
+        for (unsigned int child : node.children) {
+          parent_map.insert(std::make_pair(child, joint.index));
+        }
+      }
+      absl::flat_hash_map<unsigned int, glm::mat4> matrix_map;
+      const auto compute_local_matrix = [&nodes](unsigned int index) {
+        return glm::translate(glm::identity<glm::mat4>(),
+                              nodes[index].position) *
+               glm::toMat4(nodes[index].rotation) *
+               glm::scale(glm::identity<glm::mat4>(), nodes[index].scale);
+      };
+      int root_count = 0;
+      const std::function<glm::mat4(unsigned int)> compute_matrix =
+          [&matrix_map, &parent_map, &compute_local_matrix, &compute_matrix,
+           &root_count](unsigned int index) -> glm::mat4 {
+        const auto matrix_it = matrix_map.find(index);
+        if (matrix_it != matrix_map.end()) {
+          return matrix_it->second;
+        }
+        glm::mat4 new_matrix = compute_local_matrix(index);
+        const auto parent_it = parent_map.find(index);
+        if (parent_it == parent_map.end()) {
+          root_count++;
+        } else {
+          new_matrix = compute_matrix(parent_it->second) * new_matrix;
+        }
+        matrix_map.insert(std::make_pair(index, new_matrix));
+        return new_matrix;
+      };
+      for (unsigned int i = 0; i < skeleton.joints.size(); i++) {
+        skeleton.joints[i].inverse_bind_matrix =
+            glm::inverse(compute_matrix(i));
+      }
+      if (root_count != 1) {
+        return absl::InvalidArgumentError(
+            "Expected exactly one root node for skeleton but got more!");
+      }
+    }
+  }
+  return result;
+}
+
 absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
     const Details& details) {
   std::ifstream file(details.file, std::ios_base::in | std::ios_base::binary);
@@ -653,8 +806,6 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
     return absl::InvalidArgumentError("Root of glTF file is not an object");
   }
 
-  ASSIGN_OR_RETURN((const std::vector<GltfNode> nodes), ParseNodes(root));
-
   ASSIGN_OR_RETURN((const nlohmann::json* buffers_json_array),
                    GetArray(root, "buffers"));
   buffers.reserve(buffers.size() + buffers_json_array->size());
@@ -690,6 +841,11 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
     }
     ASSIGN_OR_RETURN((accessors.emplace_back()), ParseAccessor(accessor_json));
   }
+
+  ASSIGN_OR_RETURN((const std::vector<GltfNode> nodes), ParseNodes(root));
+  ASSIGN_OR_RETURN(
+      (const std::vector<GltfSkeleton> skeletons),
+      ParseSkeletons(root, nodes, buffers, buffer_views, accessors));
 
   std::shared_ptr<GltfModel> model(new GltfModel());
 
