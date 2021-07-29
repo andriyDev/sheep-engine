@@ -127,11 +127,23 @@ absl::Status initResources() {
   RETURN_IF_ERROR(
       ResourceLoader::Get().Add<GltfModel>("gltf_model", {"wraith.glb"}));
   RETURN_IF_ERROR(ResourceLoader::Get().Add<Mesh>(
-      "gltf_mesh", GltfModel::LoadMesh, {"gltf_model", "body", 0}));
+      "gltf_mesh_body", GltfModel::LoadMesh, {"gltf_model", "body", 0}));
   RETURN_IF_ERROR(ResourceLoader::Get().Add<Skin>(
-      "gltf_skin", GltfModel::LoadSkin, {"gltf_model", "body", 0}));
+      "gltf_skin_body", GltfModel::LoadSkin, {"gltf_model", "body", 0}));
+  RETURN_IF_ERROR(ResourceLoader::Get().Add<Mesh>(
+      "gltf_mesh_hands", GltfModel::LoadMesh, {"gltf_model", "gauntlet", 0}));
+  RETURN_IF_ERROR(ResourceLoader::Get().Add<Skin>(
+      "gltf_skin_hands", GltfModel::LoadSkin, {"gltf_model", "gauntlet", 0}));
+  RETURN_IF_ERROR(ResourceLoader::Get().Add<Mesh>(
+      "gltf_mesh_head", GltfModel::LoadMesh, {"gltf_model", "helm", 0}));
+  RETURN_IF_ERROR(ResourceLoader::Get().Add<Skin>(
+      "gltf_skin_head", GltfModel::LoadSkin, {"gltf_model", "helm", 0}));
   RETURN_IF_ERROR(ResourceLoader::Get().Add<SkinnedMesh>(
-      "gltf_smesh", {"gltf_mesh", "gltf_skin"}));
+      "gltf_smesh_body", {"gltf_mesh_body", "gltf_skin_body"}));
+  RETURN_IF_ERROR(ResourceLoader::Get().Add<SkinnedMesh>(
+      "gltf_smesh_hands", {"gltf_mesh_hands", "gltf_skin_hands"}));
+  RETURN_IF_ERROR(ResourceLoader::Get().Add<SkinnedMesh>(
+      "gltf_smesh_head", {"gltf_mesh_head", "gltf_skin_head"}));
 
   return absl::OkStatus();
 }
@@ -319,15 +331,36 @@ int main(int argc, char* argv[]) {
     }
     texture = *texture_status;
     texture->Use(0);
-
-    const absl::StatusOr<std::shared_ptr<SkinnedMesh>> mesh =
-        ResourceLoader::Get().Load<SkinnedMesh>("gltf_smesh");
-    if (!mesh.ok()) {
-      LOG(FATAL) << "Failed to load \"gltf_smesh\": " << mesh.status();
-      return 1;
+    ResourceLoader::Get().IncrementLoadingDepth();
+    {
+      const absl::StatusOr<std::shared_ptr<SkinnedMesh>> mesh =
+          ResourceLoader::Get().Load<SkinnedMesh>("gltf_smesh_body");
+      if (!mesh.ok()) {
+        LOG(FATAL) << "Failed to load \"gltf_smesh_body\": " << mesh.status();
+        return 1;
+      }
+      mesh_renderer->meshes.push_back({*mesh, *material});
+      mesh_renderer->SetSkeleton((*mesh)->GetSkeleton());
     }
-    mesh_renderer->meshes.push_back({*mesh, *material});
-    mesh_renderer->SetSkeleton((*mesh)->GetSkeleton());
+    {
+      const absl::StatusOr<std::shared_ptr<SkinnedMesh>> mesh =
+          ResourceLoader::Get().Load<SkinnedMesh>("gltf_smesh_hands");
+      if (!mesh.ok()) {
+        LOG(FATAL) << "Failed to load \"gltf_smesh_hands\": " << mesh.status();
+        return 1;
+      }
+      mesh_renderer->meshes.push_back({*mesh, *material});
+    }
+    {
+      const absl::StatusOr<std::shared_ptr<SkinnedMesh>> mesh =
+          ResourceLoader::Get().Load<SkinnedMesh>("gltf_smesh_head");
+      if (!mesh.ok()) {
+        LOG(FATAL) << "Failed to load \"gltf_smesh_head\": " << mesh.status();
+        return 1;
+      }
+      mesh_renderer->meshes.push_back({*mesh, *material});
+    }
+    ResourceLoader::Get().DecrementLoadingDepth();
 
     camera_pivot = std::shared_ptr<Transform>(new Transform());
     camera = std::shared_ptr<Camera>(new Camera());

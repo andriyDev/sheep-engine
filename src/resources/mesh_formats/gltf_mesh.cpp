@@ -781,6 +781,10 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
   if (!root.is_object()) {
     return absl::InvalidArgumentError("Root of glTF file is not an object");
   }
+  {
+    std::ofstream f("json.json");
+    f << root;
+  }
 
   ASSIGN_OR_RETURN((const nlohmann::json* buffers_json_array),
                    GetArray(root, "buffers"));

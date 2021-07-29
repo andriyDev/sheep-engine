@@ -101,7 +101,7 @@ void Engine::Run(GLFWwindow* window) {
     const double delta = time - previous_time;
     previous_time = time;
 
-    printf("Delta: %f\n", 1.0f / delta);
+    // printf("Delta: %f\n", 1.0f / delta);
 
     Update(delta);
 
