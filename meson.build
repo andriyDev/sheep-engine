@@ -49,3 +49,5 @@ executable('sheep', [
   json_dep,
   png_dep,
 ], include_directories: inc)
+
+subdir('tools')
