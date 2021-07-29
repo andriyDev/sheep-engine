@@ -2,9 +2,9 @@
 #pragma once
 
 #include <memory>
-#include <nlohmann/json.hpp>
 #include <string>
 
+#include "utility/json.h"
 #include "utility/status.h"
 
 namespace transit {
@@ -43,8 +43,7 @@ absl::Status VerifyHeader(const TransitHeader& header,
                           unsigned char version_major,
                           unsigned char version_minor);
 
-absl::StatusOr<nlohmann::json> ReadJson(std::istream& stream,
-                                        unsigned int length);
+absl::StatusOr<json::json> ReadJson(std::istream& stream, unsigned int length);
 absl::StatusOr<std::vector<unsigned char>> ReadData(std::istream& stream,
                                                     unsigned int length);
 

@@ -7,86 +7,9 @@
 
 #include <fstream>
 #include <glm/gtx/quaternion.hpp>
-#include <nlohmann/json.hpp>
 
 #include "utility/hton.h"
-
-absl::StatusOr<const nlohmann::json*> GetElementByKey(
-    const nlohmann::json& json, const std::string& key) {
-  const auto it = json.find(key);
-  if (it == json.end()) {
-    return absl::InvalidArgumentError(
-        STATUS_MESSAGE("Invalid JSON data: missing " << key << " key"));
-  } else {
-    return &it.value();
-  }
-}
-
-absl::StatusOr<const nlohmann::json*> GetObject(const nlohmann::json& json,
-                                                const std::string& key) {
-  ASSIGN_OR_RETURN((const nlohmann::json* element),
-                   (GetElementByKey(json, key)));
-  if (!element->is_object()) {
-    return absl::InvalidArgumentError(STATUS_MESSAGE(
-        "Invalid JSON data: element with key " << key << " is not an object"));
-  }
-  return element;
-}
-
-absl::StatusOr<const nlohmann::json*> GetArray(const nlohmann::json& json,
-                                               const std::string& key) {
-  ASSIGN_OR_RETURN((const nlohmann::json* element),
-                   (GetElementByKey(json, key)));
-  if (!element->is_array()) {
-    return absl::InvalidArgumentError(STATUS_MESSAGE(
-        "Invalid JSON data: element with key " << key << " is not an array"));
-  }
-  return element;
-}
-
-absl::StatusOr<int> GetInt(const nlohmann::json& json, const std::string& key) {
-  ASSIGN_OR_RETURN((const nlohmann::json* element),
-                   (GetElementByKey(json, key)));
-  if (!element->is_number_integer()) {
-    return absl::InvalidArgumentError(STATUS_MESSAGE(
-        "Invalid JSON data: element with key " << key << " is not an integer"));
-  }
-  return element->get<int>();
-}
-
-absl::StatusOr<unsigned int> GetUnsignedInt(const nlohmann::json& json,
-                                            const std::string& key) {
-  ASSIGN_OR_RETURN((const nlohmann::json* element),
-                   (GetElementByKey(json, key)));
-  if (!element->is_number_unsigned()) {
-    return absl::InvalidArgumentError(
-        STATUS_MESSAGE("Invalid JSON data: element with key "
-                       << key << " is not an unsigned integer"));
-  }
-  return element->get<unsigned int>();
-}
-
-absl::StatusOr<std::string> GetString(const nlohmann::json& json,
-                                      const std::string& key) {
-  ASSIGN_OR_RETURN((const nlohmann::json* element),
-                   (GetElementByKey(json, key)));
-  if (!element->is_string()) {
-    return absl::InvalidArgumentError(STATUS_MESSAGE(
-        "Invalid JSON data: element with key " << key << " is not a string"));
-  }
-  return element->get<std::string>();
-}
-
-absl::StatusOr<bool> GetBool(const nlohmann::json& json,
-                             const std::string& key) {
-  ASSIGN_OR_RETURN((const nlohmann::json* element),
-                   (GetElementByKey(json, key)));
-  if (!element->is_boolean()) {
-    return absl::InvalidArgumentError(STATUS_MESSAGE(
-        "Invalid JSON data: element with key " << key << " is not a bool"));
-  }
-  return element->get<bool>();
-}
+#include "utility/json.h"
 
 struct BufferView {
   unsigned int buffer;
@@ -303,35 +226,31 @@ absl::StatusOr<std::vector<glm::mat4>> ReadMat4Accessor(
   return result;
 }
 
-absl::StatusOr<BufferView> ParseBufferView(
-    const nlohmann::json& buffer_view_json) {
+absl::StatusOr<BufferView> ParseBufferView(const json::json& buffer_view_json) {
   BufferView buffer_view;
   ASSIGN_OR_RETURN((buffer_view.buffer),
-                   GetUnsignedInt(buffer_view_json, "buffer"));
+                   json::GetRequiredUint(buffer_view_json, "buffer"));
   ASSIGN_OR_RETURN((buffer_view.size),
-                   GetUnsignedInt(buffer_view_json, "byteLength"));
+                   json::GetRequiredUint(buffer_view_json, "byteLength"));
   buffer_view.offset =
-      GetUnsignedInt(buffer_view_json, "byteOffset").value_or(0);
+      json::GetOptionalUint(buffer_view_json, "byteOffset").value_or(0);
   buffer_view.stride =
-      GetUnsignedInt(buffer_view_json, "byteStride").value_or(0);
+      json::GetOptionalUint(buffer_view_json, "byteStride").value_or(0);
   return buffer_view;
 }
 
-absl::StatusOr<Accessor> ParseAccessor(const nlohmann::json& accessor_json) {
+absl::StatusOr<Accessor> ParseAccessor(const json::json& accessor_json) {
   Accessor accessor;
-  const absl::StatusOr<unsigned int> buffer_view =
-      GetUnsignedInt(accessor_json, "bufferView");
-  if (buffer_view.ok()) {
+  const std::optional<unsigned int> buffer_view =
+      json::GetOptionalUint(accessor_json, "bufferView");
+  if (buffer_view.has_value()) {
     accessor.buffer_view = *buffer_view;
   }
   accessor.byte_offset =
-      GetUnsignedInt(accessor_json, "byteOffset").value_or(0);
-  const absl::StatusOr<unsigned int> component_type =
-      GetUnsignedInt(accessor_json, "componentType");
-  if (!component_type.ok()) {
-    return component_type.status();
-  }
-  accessor.component_type = (ComponentType)*component_type;
+      json::GetOptionalUint(accessor_json, "byteOffset").value_or(0);
+  ASSIGN_OR_RETURN((const unsigned int raw_component_type),
+                   json::GetRequiredUint(accessor_json, "componentType"));
+  accessor.component_type = (ComponentType)raw_component_type;
 
   if ((unsigned int)accessor.component_type < 5120 ||
       (unsigned int)accessor.component_type > 5126 ||
@@ -342,9 +261,11 @@ absl::StatusOr<Accessor> ParseAccessor(const nlohmann::json& accessor_json) {
   }
 
   accessor.normalize_ints =
-      GetBool(accessor_json, "normalized").value_or(false);
-  ASSIGN_OR_RETURN((accessor.count), GetUnsignedInt(accessor_json, "count"));
-  ASSIGN_OR_RETURN((accessor.type), GetString(accessor_json, "type"));
+      json::GetOptionalBool(accessor_json, "normalized").value_or(false);
+  ASSIGN_OR_RETURN((accessor.count),
+                   json::GetRequiredUint(accessor_json, "count"));
+  ASSIGN_OR_RETURN((accessor.type),
+                   json::GetRequiredString(accessor_json, "type"));
   return accessor;
 }
 
@@ -436,8 +357,9 @@ absl::Status FillBufferWithBase64(absl::string_view base64_data,
 absl::Status ParseBuffer(const nlohmann::json& buffer_json,
                          std::vector<uint8_t>& out_data) {
   ASSIGN_OR_RETURN((unsigned int byte_len),
-                   GetUnsignedInt(buffer_json, "byteLength"));
-  ASSIGN_OR_RETURN((const std::string& uri), GetString(buffer_json, "uri"));
+                   json::GetRequiredUint(buffer_json, "byteLength"));
+  ASSIGN_OR_RETURN((const std::string& uri),
+                   json::GetRequiredString(buffer_json, "uri"));
   if (uri.rfind("data:", 0) == 0) {
     // Handle data URI.
     size_t comma_index = uri.find(',');
@@ -476,70 +398,63 @@ struct GltfNode {
 
 absl::StatusOr<std::pair<std::vector<GltfNode>,
                          absl::flat_hash_map<unsigned int, unsigned int>>>
-ParseNodes(const nlohmann::json& root) {
+ParseNodes(const json::json& root) {
   std::vector<GltfNode> result;
   absl::flat_hash_map<unsigned int, unsigned int> skin_mapping;
-  absl::StatusOr<const nlohmann::json*> nodes = GetArray(root, "nodes");
-  if (!nodes.ok()) {
+  std::optional<const json::json*> nodes =
+      json::GetOptionalArray(root, "nodes");
+  if (!nodes.has_value()) {
     return std::make_pair(result, skin_mapping);
   }
-  for (const nlohmann::json& node_json : **nodes) {
+  for (const json::json& node_json : **nodes) {
     if (!node_json.is_object()) {
       return absl::InvalidArgumentError(
           "Element in node array is not an object.");
     }
     GltfNode& new_node = result.emplace_back();
-    const absl::StatusOr<std::string> name = GetString(node_json, "name");
-    if (name.ok()) {
+    const std::optional<std::string> name =
+        json::GetOptionalString(node_json, "name");
+    if (name.has_value()) {
       new_node.name = *name;
     }
-    const absl::StatusOr<const nlohmann::json*> translation =
-        GetArray(node_json, "translation");
-    if (translation.ok()) {
-      if ((*translation)->size() != 3 || !(**translation)[0].is_number() ||
-          !(**translation)[1].is_number() || !(**translation)[2].is_number()) {
-        return absl::InvalidArgumentError(
-            "Translation element did not contain 3 numbers");
-      }
-      new_node.position.x = (**translation)[0].get<float>();
-      new_node.position.y = (**translation)[1].get<float>();
-      new_node.position.z = (**translation)[2].get<float>();
+    const std::optional<const nlohmann::json*> translation =
+        json::GetOptionalArray(node_json, "translation");
+    if (translation.has_value()) {
+      ASSIGN_OR_RETURN((new_node.position.x),
+                       json::GetRequiredFloat(**translation, 0));
+      ASSIGN_OR_RETURN((new_node.position.y),
+                       json::GetRequiredFloat(**translation, 1));
+      ASSIGN_OR_RETURN((new_node.position.z),
+                       json::GetRequiredFloat(**translation, 2));
     } else {
       new_node.position = glm::vec3(0, 0, 0);
     }
-    const absl::StatusOr<const nlohmann::json*> rotation =
-        GetArray(node_json, "rotation");
-    if (rotation.ok()) {
-      if ((*rotation)->size() != 4 || !(**rotation)[0].is_number() ||
-          !(**rotation)[1].is_number() || !(**rotation)[2].is_number() ||
-          !(**rotation)[3].is_number()) {
-        return absl::InvalidArgumentError(
-            "Rotation element did not contain 4 numbers");
-      }
-      new_node.rotation.x = (**rotation)[0].get<float>();
-      new_node.rotation.y = (**rotation)[1].get<float>();
-      new_node.rotation.z = (**rotation)[2].get<float>();
-      new_node.rotation.w = (**rotation)[3].get<float>();
+    const std::optional<const nlohmann::json*> rotation =
+        json::GetOptionalArray(node_json, "rotation");
+    if (rotation.has_value()) {
+      ASSIGN_OR_RETURN((new_node.rotation.x),
+                       json::GetRequiredFloat(**rotation, 0));
+      ASSIGN_OR_RETURN((new_node.rotation.y),
+                       json::GetRequiredFloat(**rotation, 1));
+      ASSIGN_OR_RETURN((new_node.rotation.z),
+                       json::GetRequiredFloat(**rotation, 2));
+      ASSIGN_OR_RETURN((new_node.rotation.w),
+                       json::GetRequiredFloat(**rotation, 3));
     } else {
       new_node.rotation = glm::quat(1, 0, 0, 0);
     }
-    const absl::StatusOr<const nlohmann::json*> scale =
-        GetArray(node_json, "scale");
-    if (scale.ok()) {
-      if ((*scale)->size() != 3 || !(**scale)[0].is_number() ||
-          !(**scale)[1].is_number() || !(**scale)[2].is_number()) {
-        return absl::InvalidArgumentError(
-            "Scale element did not contain 3 numbers");
-      }
-      new_node.scale.x = (**scale)[0].get<float>();
-      new_node.scale.y = (**scale)[1].get<float>();
-      new_node.scale.z = (**scale)[2].get<float>();
+    const std::optional<const nlohmann::json*> scale =
+        json::GetOptionalArray(node_json, "scale");
+    if (scale.has_value()) {
+      ASSIGN_OR_RETURN((new_node.scale.x), json::GetRequiredFloat(**scale, 0));
+      ASSIGN_OR_RETURN((new_node.scale.y), json::GetRequiredFloat(**scale, 1));
+      ASSIGN_OR_RETURN((new_node.scale.z), json::GetRequiredFloat(**scale, 2));
     } else {
       new_node.scale = glm::vec3(1, 1, 1);
     }
-    const absl::StatusOr<const nlohmann::json*> children =
-        GetArray(node_json, "children");
-    if (children.ok()) {
+    const std::optional<const nlohmann::json*> children =
+        json::GetOptionalArray(node_json, "children");
+    if (children.has_value()) {
       for (const nlohmann::json& child_index : **children) {
         if (!child_index.is_number_unsigned()) {
           return absl::InvalidArgumentError(
@@ -557,9 +472,11 @@ ParseNodes(const nlohmann::json& root) {
       }
     }
 
-    const absl::StatusOr<unsigned int> mesh = GetUnsignedInt(node_json, "mesh");
-    const absl::StatusOr<unsigned int> skin = GetUnsignedInt(node_json, "skin");
-    if (mesh.ok() && skin.ok()) {
+    const std::optional<unsigned int> mesh =
+        json::GetOptionalUint(node_json, "mesh");
+    const std::optional<unsigned int> skin =
+        json::GetOptionalUint(node_json, "skin");
+    if (mesh.has_value() && skin.has_value()) {
       skin_mapping.insert(std::make_pair(*mesh, *skin));
     }
   }
@@ -608,8 +525,9 @@ absl::StatusOr<std::vector<std::shared_ptr<Skeleton>>> ParseSkeletons(
     const std::vector<BufferView>& buffer_views,
     const std::vector<Accessor>& accessors) {
   std::vector<std::shared_ptr<Skeleton>> result;
-  const absl::StatusOr<const nlohmann::json*> skins = GetArray(root, "skins");
-  if (!skins.ok()) {
+  const std::optional<const nlohmann::json*> skins =
+      json::GetOptionalArray(root, "skins");
+  if (!skins.has_value()) {
     return result;
   }
   for (const nlohmann::json& skin_json : **skins) {
@@ -619,7 +537,7 @@ absl::StatusOr<std::vector<std::shared_ptr<Skeleton>>> ParseSkeletons(
     }
     std::shared_ptr<Skeleton>& skeleton = result.emplace_back(new Skeleton());
     ASSIGN_OR_RETURN((const nlohmann::json* joints_json),
-                     GetArray(skin_json, "joints"));
+                     json::GetRequiredArray(skin_json, "joints"));
     if (joints_json->size() == 0) {
       return absl::InvalidArgumentError("Joints cannot be empty.");
     }
@@ -661,9 +579,9 @@ absl::StatusOr<std::vector<std::shared_ptr<Skeleton>>> ParseSkeletons(
         }
       }
     }
-    const absl::StatusOr<unsigned int> inverse_bind_matrices_id =
-        GetUnsignedInt(skin_json, "inverseBindMatrices");
-    if (inverse_bind_matrices_id.ok()) {
+    const std::optional<unsigned int> inverse_bind_matrices_id =
+        json::GetOptionalUint(skin_json, "inverseBindMatrices");
+    if (inverse_bind_matrices_id.has_value()) {
       if (*inverse_bind_matrices_id >= accessors.size()) {
         return absl::InvalidArgumentError(
             STATUS_MESSAGE("Missing inverse bind matrix accessor: "
@@ -787,7 +705,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
   }
 
   ASSIGN_OR_RETURN((const nlohmann::json* buffers_json_array),
-                   GetArray(root, "buffers"));
+                   json::GetRequiredArray(root, "buffers"));
   buffers.reserve(buffers.size() + buffers_json_array->size());
   for (const auto& buffer_json : *buffers_json_array) {
     if (!buffer_json.is_object()) {
@@ -799,7 +717,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
 
   std::vector<BufferView> buffer_views;
   ASSIGN_OR_RETURN((const nlohmann::json* buffer_view_json_array),
-                   GetArray(root, "bufferViews"));
+                   json::GetRequiredArray(root, "bufferViews"));
   buffer_views.reserve(buffer_view_json_array->size());
   for (const nlohmann::json& buffer_view_json : *buffer_view_json_array) {
     if (!buffer_view_json.is_object()) {
@@ -812,7 +730,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
 
   std::vector<Accessor> accessors;
   ASSIGN_OR_RETURN((const nlohmann::json* accessor_json_array),
-                   GetArray(root, "accessors"));
+                   json::GetRequiredArray(root, "accessors"));
   accessors.reserve(accessor_json_array->size());
   for (const nlohmann::json& accessor_json : *accessor_json_array) {
     if (!accessor_json.is_object()) {
@@ -830,7 +748,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
   std::shared_ptr<GltfModel> model(new GltfModel());
 
   ASSIGN_OR_RETURN((const nlohmann::json* meshes_array),
-                   GetArray(root, "meshes"));
+                   json::GetRequiredArray(root, "meshes"));
 
   for (unsigned int i = 0; i < meshes_array->size(); i++) {
     const nlohmann::json& mesh = (*meshes_array)[i];
@@ -839,9 +757,10 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
           "Invalid JSON data: mesh is not an object.");
     }
 
-    const absl::StatusOr<std::string> mesh_name = GetString(mesh, "name");
+    const std::optional<std::string> mesh_name =
+        json::GetOptionalString(mesh, "name");
     // Failing to find a name is fine - just skip the mesh.
-    if (!mesh_name.ok()) {
+    if (!mesh_name.has_value()) {
       continue;
     }
 
@@ -854,7 +773,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
     }
 
     ASSIGN_OR_RETURN((const nlohmann::json* primitives_array),
-                     GetArray(mesh, "primitives"));
+                     json::GetRequiredArray(mesh, "primitives"));
     if (primitives_array->size() == 0) {
       continue;
     }
@@ -870,10 +789,10 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
       primitive.mesh = mesh;
 
       ASSIGN_OR_RETURN((const nlohmann::json* attributes),
-                       GetObject(primitive_json, "attributes"));
+                       json::GetRequiredObject(primitive_json, "attributes"));
       {
         ASSIGN_OR_RETURN((const unsigned int position_accessor_id),
-                         GetUnsignedInt(*attributes, "POSITION"));
+                         json::GetRequiredUint(*attributes, "POSITION"));
         if (position_accessor_id >= accessors.size()) {
           return absl::InvalidArgumentError(STATUS_MESSAGE(
               "Missing position accessor: " << position_accessor_id));
@@ -895,9 +814,9 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
         }
       }
       {
-        const absl::StatusOr<unsigned int> texcoord_accessor_id =
-            GetUnsignedInt(*attributes, "TEXCOORD_0");
-        if (!texcoord_accessor_id.ok()) {
+        const std::optional<unsigned int> texcoord_accessor_id =
+            json::GetOptionalUint(*attributes, "TEXCOORD_0");
+        if (!texcoord_accessor_id.has_value()) {
           for (Mesh::Vertex& vertex : mesh->vertices) {
             vertex.texCoord = glm::vec2(0, 0);
           }
@@ -928,9 +847,9 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
         }
       }
       {
-        const absl::StatusOr<unsigned int> colour_accessor_id =
-            GetUnsignedInt(*attributes, "COLOR_0");
-        if (!colour_accessor_id.ok()) {
+        const std::optional<unsigned int> colour_accessor_id =
+            json::GetOptionalUint(*attributes, "COLOR_0");
+        if (!colour_accessor_id.has_value()) {
           for (Mesh::Vertex& vertex : mesh->vertices) {
             vertex.colour = glm::vec4(0, 0, 0, 0);
           }
@@ -973,9 +892,9 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
         }
       }
       {
-        const absl::StatusOr<unsigned int> normal_accessor_id =
-            GetUnsignedInt(*attributes, "NORMAL");
-        if (!normal_accessor_id.ok()) {
+        const std::optional<unsigned int> normal_accessor_id =
+            json::GetOptionalUint(*attributes, "NORMAL");
+        if (!normal_accessor_id.has_value()) {
           for (Mesh::Vertex& vertex : mesh->vertices) {
             vertex.normal = glm::vec3(0, 0, 0);
           }
@@ -1007,9 +926,9 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
         }
       }
       {
-        const absl::StatusOr<unsigned int> tangent_accessor_id =
-            GetUnsignedInt(*attributes, "TANGENT");
-        if (!tangent_accessor_id.ok()) {
+        const std::optional<unsigned int> tangent_accessor_id =
+            json::GetOptionalUint(*attributes, "TANGENT");
+        if (!tangent_accessor_id.has_value()) {
           for (Mesh::Vertex& vertex : mesh->vertices) {
             vertex.tangent = glm::vec3(0, 0, 0);
             vertex.bitangent = glm::vec3(0, 0, 0);
@@ -1046,9 +965,9 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
         }
       }
       {
-        const absl::StatusOr<unsigned int> indices_accessor_id =
-            GetUnsignedInt(primitive_json, "indices");
-        if (indices_accessor_id.ok()) {
+        const std::optional<unsigned int> indices_accessor_id =
+            json::GetOptionalUint(primitive_json, "indices");
+        if (indices_accessor_id.has_value()) {
           if (*indices_accessor_id >= accessors.size()) {
             return absl::InvalidArgumentError(STATUS_MESSAGE(
                 "Missing indices accessor: " << (*indices_accessor_id)));
@@ -1100,9 +1019,9 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
       }
       if (skeleton) {
         const absl::StatusOr<unsigned int> bones_accessor_id =
-            GetUnsignedInt(*attributes, "JOINTS_0");
+            json::GetRequiredUint(*attributes, "JOINTS_0");
         const absl::StatusOr<unsigned int> weights_accessor_id =
-            GetUnsignedInt(*attributes, "WEIGHTS_0");
+            json::GetRequiredUint(*attributes, "WEIGHTS_0");
         if (bones_accessor_id.ok() != weights_accessor_id.ok()) {
           if (!weights_accessor_id.ok()) {
             return weights_accessor_id.status();

@@ -48,7 +48,7 @@ absl::Status VerifyHeader(const TransitHeader& header,
   return absl::OkStatus();
 }
 
-absl::StatusOr<nlohmann::json> ReadJson(std::istream& stream,
+absl::StatusOr<json::json> ReadJson(std::istream& stream,
                                         unsigned int length) {
   std::vector<uint8_t> json_data;
   json_data.resize(length);
