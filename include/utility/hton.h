@@ -44,7 +44,11 @@ inline uint16_t swap_bytes(uint16_t value) {
 
 // htob, btoh -> Host to big endian
 
-inline uint32_t htobl(uint32_t value) {
+template <typename T>
+inline T htob(T value);
+
+template <>
+inline uint32_t htob(uint32_t value) {
   if constexpr (endian::native == endian::big) {
     return value;
   } else {
@@ -52,7 +56,8 @@ inline uint32_t htobl(uint32_t value) {
   }
 }
 
-inline uint16_t htobs(uint16_t value) {
+template <>
+inline uint16_t htob(uint16_t value) {
   if constexpr (endian::native == endian::big) {
     return value;
   } else {
@@ -60,25 +65,49 @@ inline uint16_t htobs(uint16_t value) {
   }
 }
 
-inline float htobf(float value) {
+template <>
+inline uint8_t htob(uint8_t value) {
+  return value;
+}
+
+template <>
+inline int32_t htob(int32_t value) {
+  return (int32_t)htob((uint32_t)value);
+}
+
+template <>
+inline int16_t htob(int16_t value) {
+  return (int16_t)htob((uint16_t)value);
+}
+
+template <>
+inline int8_t htob(int8_t value) {
+  return value;
+}
+
+template <>
+inline float htob(float value) {
   union {
     float fval;
     uint32_t ival;
   };
   fval = value;
-  ival = htobl(ival);
+  ival = htob(ival);
   return fval;
 }
 
-inline uint32_t btohl(uint32_t value) { return htobl(value); }
-
-inline uint16_t btohs(uint16_t value) { return htobs(value); }
-
-inline float btohf(float value) { return htobf(value); }
+template <typename T>
+inline T btoh(T value) {
+  return htob(value);
+}
 
 // ltoh, htol -> Host to little endian
 
-inline uint32_t htoll(uint32_t value) {
+template <typename T>
+inline T htol(T value);
+
+template <>
+inline uint32_t htol(uint32_t value) {
   if constexpr (endian::native == endian::little) {
     return value;
   } else {
@@ -86,7 +115,8 @@ inline uint32_t htoll(uint32_t value) {
   }
 }
 
-inline uint16_t htols(uint16_t value) {
+template <>
+inline uint16_t htol(uint16_t value) {
   if constexpr (endian::native == endian::little) {
     return value;
   } else {
@@ -94,18 +124,38 @@ inline uint16_t htols(uint16_t value) {
   }
 }
 
-inline float htolf(float value) {
+template <>
+inline uint8_t htol(uint8_t value) {
+  return value;
+}
+
+template <>
+inline int32_t htol(int32_t value) {
+  return (int32_t)htol((uint32_t)value);
+}
+
+template <>
+inline int16_t htol(int16_t value) {
+  return (int16_t)htol((uint16_t)value);
+}
+
+template <>
+inline int8_t htol(int8_t value) {
+  return value;
+}
+
+template <>
+inline float htol(float value) {
   union {
     float fval;
     uint32_t ival;
   };
   fval = value;
-  ival = htoll(ival);
+  ival = htol(ival);
   return fval;
 }
 
-inline uint32_t ltohl(uint32_t value) { return htoll(value); }
-
-inline uint16_t ltohs(uint16_t value) { return htols(value); }
-
-inline float ltohf(float value) { return htolf(value); }
+template <typename T>
+inline T ltoh(T value) {
+  return htol(value);
+}

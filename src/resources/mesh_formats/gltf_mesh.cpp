@@ -36,39 +36,6 @@ struct Accessor {
   std::string type;
 };
 
-template <typename ComponentType>
-inline ComponentType ltoh(ComponentType value);
-
-template <>
-inline float ltoh(float value) {
-  return ltohf(value);
-}
-
-template <>
-inline uint32_t ltoh(uint32_t value) {
-  return ltohl(value);
-}
-
-template <>
-inline uint16_t ltoh(uint16_t value) {
-  return ltohs(value);
-}
-
-template <>
-inline uint8_t ltoh(uint8_t value) {
-  return value;
-}
-
-template <>
-inline int16_t ltoh(int16_t value) {
-  return ltohs(value);
-}
-
-template <>
-inline int8_t ltoh(int8_t value) {
-  return value;
-}
-
 template <typename ComponentType, int components>
 absl::StatusOr<std::vector<glm::vec<components, ComponentType>>> ReadAccessor(
     const std::vector<std::vector<uint8_t>>& buffers,
@@ -618,8 +585,8 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
   file.read((char*)header.chars, 12);
   if (file.gcount() == 12 &&
       absl::string_view((char*)header.chars, 4) == "glTF") {
-    header.ints[1] = ltohl(header.ints[1]);
-    header.ints[2] = ltohl(header.ints[2]);
+    header.ints[1] = ltoh(header.ints[1]);
+    header.ints[2] = ltoh(header.ints[2]);
     if (header.ints[1] != 2) {
       return absl::InvalidArgumentError(STATUS_MESSAGE(
           "Bad GLB version. Expected 2, but got " << header.ints[1]));
@@ -640,8 +607,8 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
             << read_bytes));
       }
       data_read += 8;
-      chunk.ints[0] = ltohl(chunk.ints[0]);
-      chunk.ints[1] = ltohl(chunk.ints[1]);
+      chunk.ints[0] = ltoh(chunk.ints[0]);
+      chunk.ints[1] = ltoh(chunk.ints[1]);
       if (chunk.ints[1] == 0x4e4f534a) {
         if (parsed_json) {
           return absl::InvalidArgumentError(

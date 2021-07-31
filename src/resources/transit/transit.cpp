@@ -13,8 +13,8 @@ absl::StatusOr<TransitHeader> ReadHeader(std::istream& stream) {
         STATUS_MESSAGE("Failed to read header bytes of transit file. eof: "
                        << stream.eof() << " fail: " << stream.fail()));
   }
-  header.json_length = btohl(header.json_length);
-  header.data_length = btohl(header.data_length);
+  header.json_length = btoh(header.json_length);
+  header.data_length = btoh(header.data_length);
   return header;
 }
 
@@ -48,8 +48,7 @@ absl::Status VerifyHeader(const TransitHeader& header,
   return absl::OkStatus();
 }
 
-absl::StatusOr<json::json> ReadJson(std::istream& stream,
-                                        unsigned int length) {
+absl::StatusOr<json::json> ReadJson(std::istream& stream, unsigned int length) {
   std::vector<uint8_t> json_data;
   json_data.resize(length);
   stream.read((char*)json_data.data(), length);

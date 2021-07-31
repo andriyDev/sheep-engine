@@ -6,7 +6,7 @@
 #include <fstream>
 
 #include "resources/transit/transit.h"
-#include "utility/hton.h"
+#include "utility/hton_extra.h"
 
 namespace transit {
 
@@ -48,34 +48,18 @@ absl::StatusOr<std::shared_ptr<Mesh>> Load(const TransitDetails& details) {
         << expected_data_size << ", Actual: " << header.data_length));
   }
 
-  const auto btohv2 = [](glm::vec2& v) {
-    v.x = btohf(v.x);
-    v.y = btohf(v.y);
-  };
-  const auto btohv3 = [](glm::vec3& v) {
-    v.x = btohf(v.x);
-    v.y = btohf(v.y);
-    v.z = btohf(v.z);
-  };
-  const auto btohv4 = [](glm::vec4& v) {
-    v.x = btohf(v.x);
-    v.y = btohf(v.y);
-    v.z = btohf(v.z);
-    v.w = btohf(v.w);
-  };
-
   std::shared_ptr<Mesh> mesh(new Mesh());
   mesh->vertices.reserve(vertices_count);
   Mesh::Vertex* data_vertex = (Mesh::Vertex*)data.data();
   for (int i = 0; i < vertices_count; i++, data_vertex++) {
     Mesh::Vertex& new_vertex = mesh->vertices.emplace_back();
     memcpy(&new_vertex, data_vertex, sizeof(Mesh::Vertex));
-    btohv3(new_vertex.position);
-    btohv3(new_vertex.normal);
-    btohv4(new_vertex.colour);
-    btohv2(new_vertex.texCoord);
-    btohv3(new_vertex.tangent);
-    btohv3(new_vertex.bitangent);
+    new_vertex.position = btoh(new_vertex.position);
+    new_vertex.normal = btoh(new_vertex.normal);
+    new_vertex.colour = btoh(new_vertex.colour);
+    new_vertex.texCoord = btoh(new_vertex.texCoord);
+    new_vertex.tangent = btoh(new_vertex.tangent);
+    new_vertex.bitangent = btoh(new_vertex.bitangent);
   }
   if (indexing_mode_is_big) {
     mesh->triangles.reserve(triangles);
@@ -84,9 +68,9 @@ absl::StatusOr<std::shared_ptr<Mesh>> Load(const TransitDetails& details) {
     for (int i = 0; i < triangles; i++, data_triangle++) {
       Mesh::Triangle& new_triangle = mesh->triangles.emplace_back();
       memcpy(&new_triangle, data_triangle, sizeof(Mesh::Triangle));
-      new_triangle.points[0] = btohl(new_triangle.points[0]);
-      new_triangle.points[1] = btohl(new_triangle.points[1]);
-      new_triangle.points[2] = btohl(new_triangle.points[2]);
+      new_triangle.points[0] = btoh(new_triangle.points[0]);
+      new_triangle.points[1] = btoh(new_triangle.points[1]);
+      new_triangle.points[2] = btoh(new_triangle.points[2]);
     }
   } else {
     mesh->small_triangles.reserve(triangles);
@@ -96,9 +80,9 @@ absl::StatusOr<std::shared_ptr<Mesh>> Load(const TransitDetails& details) {
     for (int i = 0; i < triangles; i++, data_triangle++) {
       Mesh::SmallTriangle& new_triangle = mesh->small_triangles.emplace_back();
       memcpy(&new_triangle, data_triangle, sizeof(Mesh::SmallTriangle));
-      new_triangle.points[0] = btohs(new_triangle.points[0]);
-      new_triangle.points[1] = btohs(new_triangle.points[1]);
-      new_triangle.points[2] = btohs(new_triangle.points[2]);
+      new_triangle.points[0] = btoh(new_triangle.points[0]);
+      new_triangle.points[1] = btoh(new_triangle.points[1]);
+      new_triangle.points[2] = btoh(new_triangle.points[2]);
     }
   }
   return mesh;
