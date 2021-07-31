@@ -6,6 +6,9 @@ absl_dep = dependency('absl', modules: [
   'absl::flat_hash_set',
   'absl::status',
   'absl::statusor',
+  'absl::flags',
+  'absl::flags_parse',
+  'absl::flags_usage',
 ])
 gl_dep = dependency('gl')
 glm_dep = dependency('glm')
