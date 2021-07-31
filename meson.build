@@ -8,6 +8,7 @@ absl_dep = dependency('absl', modules: [
   'absl::statusor',
 ])
 gl_dep = dependency('gl')
+glm_dep = dependency('glm')
 glew_dep = dependency('glew')
 glfw_dep = dependency('glfw3', modules: [ 'glfw' ])
 glog_dep = dependency('glog')
@@ -46,6 +47,7 @@ executable('sheep', [
 ], dependencies: [
   absl_dep,
   gl_dep,
+  glm_dep,
   glew_dep,
   glfw_dep,
   glog_dep,
