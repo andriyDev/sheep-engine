@@ -16,13 +16,13 @@
 #include "nodes/mesh_renderer.h"
 #include "nodes/skinned_mesh_renderer.h"
 #include "nodes/transform.h"
-#include "resources/mesh_formats/gltf_mesh.h"
 #include "resources/mesh_formats/obj_mesh.h"
 #include "resources/renderable_mesh.h"
 #include "resources/resource.h"
 #include "resources/shader.h"
 #include "resources/skinned_mesh.h"
 #include "resources/texture_formats/png_texture.h"
+#include "resources/transit/transit.h"
 #include "systems/input_system.h"
 #include "systems/render_system.h"
 #include "utility/cached.h"
@@ -124,26 +124,18 @@ absl::Status initResources() {
                    RenderableTexture::FilterMode::Linear,
                    RenderableTexture::FilterMode::Linear, false}));
 
+  RETURN_IF_ERROR(ResourceLoader::Get().Add<Mesh>(
+      "body_mesh", transit::Load<Mesh>, {"wraith_body_0.trst"}));
+  RETURN_IF_ERROR(ResourceLoader::Get().Add<Mesh>(
+      "hands_mesh", transit::Load<Mesh>, {"wraith_gauntlet_0.trst"}));
+  RETURN_IF_ERROR(ResourceLoader::Get().Add<Mesh>(
+      "head_mesh", transit::Load<Mesh>, {"wraith_helm_0.trst"}));
   RETURN_IF_ERROR(
-      ResourceLoader::Get().Add<GltfModel>("gltf_model", {"wraith.glb"}));
-  RETURN_IF_ERROR(ResourceLoader::Get().Add<Mesh>(
-      "gltf_mesh_body", GltfModel::LoadMesh, {"gltf_model", "body", 0}));
-  RETURN_IF_ERROR(ResourceLoader::Get().Add<Skin>(
-      "gltf_skin_body", GltfModel::LoadSkin, {"gltf_model", "body", 0}));
-  RETURN_IF_ERROR(ResourceLoader::Get().Add<Mesh>(
-      "gltf_mesh_hands", GltfModel::LoadMesh, {"gltf_model", "gauntlet", 0}));
-  RETURN_IF_ERROR(ResourceLoader::Get().Add<Skin>(
-      "gltf_skin_hands", GltfModel::LoadSkin, {"gltf_model", "gauntlet", 0}));
-  RETURN_IF_ERROR(ResourceLoader::Get().Add<Mesh>(
-      "gltf_mesh_head", GltfModel::LoadMesh, {"gltf_model", "helm", 0}));
-  RETURN_IF_ERROR(ResourceLoader::Get().Add<Skin>(
-      "gltf_skin_head", GltfModel::LoadSkin, {"gltf_model", "helm", 0}));
-  RETURN_IF_ERROR(ResourceLoader::Get().Add<SkinnedMesh>(
-      "gltf_smesh_body", {"gltf_mesh_body", "gltf_skin_body"}));
-  RETURN_IF_ERROR(ResourceLoader::Get().Add<SkinnedMesh>(
-      "gltf_smesh_hands", {"gltf_mesh_hands", "gltf_skin_hands"}));
-  RETURN_IF_ERROR(ResourceLoader::Get().Add<SkinnedMesh>(
-      "gltf_smesh_head", {"gltf_mesh_head", "gltf_skin_head"}));
+      ResourceLoader::Get().Add<RenderableMesh>("body_rmesh", {"body_mesh"}));
+  RETURN_IF_ERROR(
+      ResourceLoader::Get().Add<RenderableMesh>("hands_rmesh", {"hands_mesh"}));
+  RETURN_IF_ERROR(
+      ResourceLoader::Get().Add<RenderableMesh>("head_rmesh", {"head_mesh"}));
 
   return absl::OkStatus();
 }
@@ -306,8 +298,7 @@ int main(int argc, char* argv[]) {
   std::shared_ptr<Transform> camera_pivot;
   std::shared_ptr<Camera> camera;
   {
-    std::shared_ptr<SkinnedMeshRenderer> mesh_renderer(
-        new SkinnedMeshRenderer());
+    std::shared_ptr<MeshRenderer> mesh_renderer(new MeshRenderer());
     mesh_renderer->AttachTo(world->GetRoot());
     mesh_renderer->SetScale(glm::vec3(3, 3, 3));
     mesh_renderer->SetRotation(FromEuler(glm::vec3(-90, 90, 0)));
@@ -333,29 +324,29 @@ int main(int argc, char* argv[]) {
     texture->Use(0);
     ResourceLoader::Get().IncrementLoadingDepth();
     {
-      const absl::StatusOr<std::shared_ptr<SkinnedMesh>> mesh =
-          ResourceLoader::Get().Load<SkinnedMesh>("gltf_smesh_body");
+      const absl::StatusOr<std::shared_ptr<RenderableMesh>> mesh =
+          ResourceLoader::Get().Load<RenderableMesh>("body_rmesh");
       if (!mesh.ok()) {
-        LOG(FATAL) << "Failed to load \"gltf_smesh_body\": " << mesh.status();
+        LOG(FATAL) << "Failed to load \"body_rmesh\": " << mesh.status();
         return 1;
       }
       mesh_renderer->meshes.push_back({*mesh, *material});
-      mesh_renderer->SetSkeleton((*mesh)->GetSkeleton());
+      // mesh_renderer->SetSkeleton((*mesh)->GetSkeleton());
     }
     {
-      const absl::StatusOr<std::shared_ptr<SkinnedMesh>> mesh =
-          ResourceLoader::Get().Load<SkinnedMesh>("gltf_smesh_hands");
+      const absl::StatusOr<std::shared_ptr<RenderableMesh>> mesh =
+          ResourceLoader::Get().Load<RenderableMesh>("hands_rmesh");
       if (!mesh.ok()) {
-        LOG(FATAL) << "Failed to load \"gltf_smesh_hands\": " << mesh.status();
+        LOG(FATAL) << "Failed to load \"hands_rmesh\": " << mesh.status();
         return 1;
       }
       mesh_renderer->meshes.push_back({*mesh, *material});
     }
     {
-      const absl::StatusOr<std::shared_ptr<SkinnedMesh>> mesh =
-          ResourceLoader::Get().Load<SkinnedMesh>("gltf_smesh_head");
+      const absl::StatusOr<std::shared_ptr<RenderableMesh>> mesh =
+          ResourceLoader::Get().Load<RenderableMesh>("head_rmesh");
       if (!mesh.ok()) {
-        LOG(FATAL) << "Failed to load \"gltf_smesh_head\": " << mesh.status();
+        LOG(FATAL) << "Failed to load \"head_rmesh\": " << mesh.status();
         return 1;
       }
       mesh_renderer->meshes.push_back({*mesh, *material});

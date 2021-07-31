@@ -1,5 +1,5 @@
 
-#include "resources/mesh_formats/gltf_mesh.h"
+#include "gltf_mesh.h"
 
 #include <GL/glew.h>
 #include <absl/strings/string_view.h>
@@ -567,12 +567,11 @@ absl::StatusOr<std::vector<std::shared_ptr<Skeleton>>> ParseSkeletons(
   return result;
 }
 
-absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
-    const Details& details) {
-  std::ifstream file(details.file, std::ios_base::in | std::ios_base::binary);
+absl::StatusOr<GltfModel> GltfModel::Load(const std::string& filename) {
+  std::ifstream file(filename, std::ios_base::in | std::ios_base::binary);
   if (!file.is_open()) {
     return absl::NotFoundError(
-        STATUS_MESSAGE("Unable to read file " << details.file));
+        STATUS_MESSAGE("Unable to read file " << filename));
   }
 
   std::vector<std::vector<unsigned char>> buffers;
@@ -712,7 +711,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
                    (ParseSkeletons(root, node_data.first, buffers, buffer_views,
                                    accessors)));
 
-  std::shared_ptr<GltfModel> model(new GltfModel());
+  GltfModel model;
 
   ASSIGN_OR_RETURN((const nlohmann::json* meshes_array),
                    json::GetRequiredArray(root, "meshes"));
@@ -752,7 +751,7 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
       }
 
       std::shared_ptr<Mesh> mesh(new Mesh());
-      Primitive& primitive = model->primitives[*mesh_name].emplace_back();
+      Primitive& primitive = model.primitives[*mesh_name].emplace_back();
       primitive.mesh = mesh;
 
       ASSIGN_OR_RETURN((const nlohmann::json* attributes),
@@ -1073,50 +1072,4 @@ absl::StatusOr<std::shared_ptr<GltfModel>> GltfModel::Load(
     }
   }
   return model;
-}
-
-absl::StatusOr<std::shared_ptr<Mesh>> GltfModel::LoadMesh(
-    const PrimitiveDetails& details) {
-  ASSIGN_OR_RETURN((const std::shared_ptr<GltfModel> model),
-                   details.model.Get());
-
-  const auto it = model->primitives.find(details.mesh_name);
-  if (it == model->primitives.end()) {
-    return absl::NotFoundError(
-        STATUS_MESSAGE("No mesh named \"" << details.mesh_name << "\""));
-  }
-
-  if (details.index >= it->second.size()) {
-    return absl::NotFoundError(STATUS_MESSAGE(
-        "No primitive at index " << details.index << " in mesh named \""
-                                 << details.mesh_name << "\""));
-  }
-
-  return it->second[details.index].mesh;
-}
-
-absl::StatusOr<std::shared_ptr<Skin>> GltfModel::LoadSkin(
-    const PrimitiveDetails& details) {
-  ASSIGN_OR_RETURN((const std::shared_ptr<GltfModel> model),
-                   details.model.Get());
-
-  const auto it = model->primitives.find(details.mesh_name);
-  if (it == model->primitives.end()) {
-    return absl::NotFoundError(
-        STATUS_MESSAGE("No mesh named \"" << details.mesh_name << "\""));
-  }
-
-  if (details.index >= it->second.size()) {
-    return absl::NotFoundError(STATUS_MESSAGE(
-        "No primitive at index " << details.index << " in mesh named \""
-                                 << details.mesh_name << "\""));
-  }
-
-  if (!it->second[details.index].skin) {
-    return absl::NotFoundError(
-        STATUS_MESSAGE("Primitive at index "
-                       << details.index << " in mesh named \""
-                       << details.mesh_name << "\" does not have a skin."));
-  }
-  return it->second[details.index].skin;
 }

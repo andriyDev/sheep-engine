@@ -31,7 +31,6 @@ executable('sheep', [
   'src/nodes/utility.cpp',
   'src/resources/transit/mesh.cpp',
   'src/resources/transit/transit.cpp',
-  'src/resources/mesh_formats/gltf_mesh.cpp',
   'src/resources/mesh_formats/obj_mesh.cpp',
   'src/resources/renderable_mesh.cpp',
   'src/resources/resource.cpp',
