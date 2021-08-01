@@ -5,6 +5,8 @@ executable('resource_converter', [
   'src/gltf_mesh.cpp',
   'src/main.cpp',
   'src/resources/transit/mesh.cpp',
+  'src/resources/transit/skeleton.cpp',
+  'src/resources/transit/skin.cpp',
   'src/resources/transit/transit_write.cpp',
   join_paths(meson.source_root(), 'src/utility/json.cpp'),
   join_paths(meson.source_root(), 'src/resources/skeleton.cpp'),

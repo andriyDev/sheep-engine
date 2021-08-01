@@ -2,6 +2,7 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 #include "utility/hton.h"
 
@@ -46,6 +47,24 @@ inline glm::vec4 htob(glm::vec4 value) {
 
 template <>
 inline glm::vec4 htol(glm::vec4 value) {
+  value.x = htol(value.x);
+  value.y = htol(value.y);
+  value.z = htol(value.z);
+  value.w = htol(value.w);
+  return value;
+}
+
+template <>
+inline glm::quat htob(glm::quat value) {
+  value.x = htob(value.x);
+  value.y = htob(value.y);
+  value.z = htob(value.z);
+  value.w = htob(value.w);
+  return value;
+}
+
+template <>
+inline glm::quat htol(glm::quat value) {
   value.x = htol(value.x);
   value.y = htol(value.y);
   value.z = htol(value.z);
