@@ -2,6 +2,7 @@
 #include "gltf_mesh.h"
 
 #include <GL/glew.h>
+#include <absl/strings/str_format.h>
 #include <absl/strings/string_view.h>
 #include <glog/logging.h>
 
@@ -486,12 +487,13 @@ ParseNodes(const json::json& root) {
   return std::make_pair(result, skin_mapping);
 }
 
-absl::StatusOr<std::vector<std::shared_ptr<Skeleton>>> ParseSkeletons(
-    const nlohmann::json& root, const std::vector<GltfNode>& nodes,
-    const std::vector<std::vector<unsigned char>>& buffers,
-    const std::vector<BufferView>& buffer_views,
-    const std::vector<Accessor>& accessors) {
-  std::vector<std::shared_ptr<Skeleton>> result;
+absl::StatusOr<std::vector<std::pair<std::string, std::shared_ptr<Skeleton>>>>
+ParseSkeletons(const nlohmann::json& root, const std::vector<GltfNode>& nodes,
+               const std::vector<std::vector<unsigned char>>& buffers,
+               const std::vector<BufferView>& buffer_views,
+               const std::vector<Accessor>& accessors) {
+  std::vector<std::pair<std::string, std::shared_ptr<Skeleton>>> result;
+  int unassigned_names = 0;
   const std::optional<const nlohmann::json*> skins =
       json::GetOptionalArray(root, "skins");
   if (!skins.has_value()) {
@@ -502,7 +504,16 @@ absl::StatusOr<std::vector<std::shared_ptr<Skeleton>>> ParseSkeletons(
       return absl::InvalidArgumentError(
           "Element in skin array is not an object.");
     }
-    std::shared_ptr<Skeleton>& skeleton = result.emplace_back(new Skeleton());
+    std::pair<std::string, std::shared_ptr<Skeleton>>& skeleton =
+        result.emplace_back(std::pair("", new Skeleton()));
+    const std::optional<std::string> name =
+        json::GetOptionalString(skin_json, "name");
+    if (name.has_value()) {
+      skeleton.first = *name;
+    } else {
+      skeleton.first = absl::StrFormat("%d", unassigned_names++);
+    }
+
     ASSIGN_OR_RETURN((const nlohmann::json* joints_json),
                      json::GetRequiredArray(skin_json, "joints"));
     if (joints_json->size() == 0) {
@@ -532,10 +543,10 @@ absl::StatusOr<std::vector<std::shared_ptr<Skeleton>>> ParseSkeletons(
       // Assign the nodes children even though they don't currently map
       // correctly to other bones.
       bone.children = node.children;
-      skeleton->bones.push_back(bone);
+      skeleton.second->bones.push_back(bone);
     }
     // Go through each bone to remap its child nodes to actual bone indices.
-    for (Skeleton::Bone& bone : skeleton->bones) {
+    for (Skeleton::Bone& bone : skeleton.second->bones) {
       for (int i = bone.children.size() - 1; i >= 0; i--) {
         const auto it = remapped_joints.find(bone.children[i]);
         // If there is no bone mapping, this is an unrelated node so erase it.
@@ -557,11 +568,11 @@ absl::StatusOr<std::vector<std::shared_ptr<Skeleton>>> ParseSkeletons(
       ASSIGN_OR_RETURN((const std::vector<glm::mat4>& inverse_bind_matrices),
                        ReadMat4Accessor(buffers, buffer_views,
                                         accessors[*inverse_bind_matrices_id]));
-      if (inverse_bind_matrices.size() != skeleton->bones.size()) {
+      if (inverse_bind_matrices.size() != skeleton.second->bones.size()) {
         return absl::InvalidArgumentError(
             "Inverse bind matrices do not have same size as joints.");
       }
-      skeleton->inverse_bind_matrices.Set(inverse_bind_matrices);
+      skeleton.second->inverse_bind_matrices.Set(inverse_bind_matrices);
     }
   }
   return result;
@@ -706,12 +717,16 @@ absl::StatusOr<GltfModel> GltfModel::Load(const std::string& filename) {
     ASSIGN_OR_RETURN((accessors.emplace_back()), ParseAccessor(accessor_json));
   }
 
-  ASSIGN_OR_RETURN((const auto& node_data), ParseNodes(root));
-  ASSIGN_OR_RETURN((const std::vector<std::shared_ptr<Skeleton>>& skeletons),
-                   (ParseSkeletons(root, node_data.first, buffers, buffer_views,
-                                   accessors)));
-
   GltfModel model;
+
+  ASSIGN_OR_RETURN((const auto& node_data), ParseNodes(root));
+  ASSIGN_OR_RETURN(
+      (const std::vector<std::pair<std::string, std::shared_ptr<Skeleton>>>&
+           skeletons),
+      (ParseSkeletons(root, node_data.first, buffers, buffer_views,
+                      accessors)));
+  model.skeletons = absl::flat_hash_map<std::string, std::shared_ptr<Skeleton>>(
+      skeletons.begin(), skeletons.end());
 
   ASSIGN_OR_RETURN((const nlohmann::json* meshes_array),
                    json::GetRequiredArray(root, "meshes"));
@@ -734,7 +749,7 @@ absl::StatusOr<GltfModel> GltfModel::Load(const std::string& filename) {
     {
       const auto it = node_data.second.find(i);
       if (it != node_data.second.end()) {
-        skeleton = skeletons[it->second];
+        skeleton = skeletons[it->second].second;
       }
     }
 

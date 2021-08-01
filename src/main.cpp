@@ -125,11 +125,11 @@ absl::Status initResources() {
                    RenderableTexture::FilterMode::Linear, false}));
 
   RETURN_IF_ERROR(ResourceLoader::Get().Add<Mesh>(
-      "body_mesh", transit::Load<Mesh>, {"wraith_body_0.trst"}));
+      "body_mesh", transit::Load<Mesh>, {"wraith_body_0.tmesh"}));
   RETURN_IF_ERROR(ResourceLoader::Get().Add<Mesh>(
-      "hands_mesh", transit::Load<Mesh>, {"wraith_gauntlet_0.trst"}));
+      "hands_mesh", transit::Load<Mesh>, {"wraith_gauntlet_0.tmesh"}));
   RETURN_IF_ERROR(ResourceLoader::Get().Add<Mesh>(
-      "head_mesh", transit::Load<Mesh>, {"wraith_helm_0.trst"}));
+      "head_mesh", transit::Load<Mesh>, {"wraith_helm_0.tmesh"}));
   RETURN_IF_ERROR(
       ResourceLoader::Get().Add<RenderableMesh>("body_rmesh", {"body_mesh"}));
   RETURN_IF_ERROR(

@@ -21,7 +21,7 @@ absl::Status ConvertFiles(const std::vector<char*>& filenames) {
       for (int i = 0; i < primitive_array.size(); i++) {
         const GltfModel::Primitive primitive = primitive_array[i];
         const std::string out_filename =
-            absl::StrFormat("%s_%s_%d.trst", basename, name, i);
+            absl::StrFormat("%s_%s_%d.tmesh", basename, name, i);
         std::ofstream mesh_file(out_filename,
                                 std::ios_base::out | std::ios_base::binary);
         if (!mesh_file.is_open()) {
