@@ -1,6 +1,8 @@
 
 #include "resources/transit/transit_write.h"
 
+#include <glog/logging.h>
+
 #include "utility/hton.h"
 
 namespace transit {
@@ -13,7 +15,7 @@ absl::Status WriteHeader(std::ostream& stream, const TransitHeader& header) {
   TransitHeader mut_header(header);
   mut_header.data_length = htob(mut_header.data_length);
   mut_header.json_length = htob(mut_header.json_length);
-  stream.write((char*)&header, sizeof(TransitHeader));
+  stream.write((char*)&mut_header, sizeof(TransitHeader));
   if (stream.bad()) {
     return absl::UnknownError("Failed to write header to stream.");
   }

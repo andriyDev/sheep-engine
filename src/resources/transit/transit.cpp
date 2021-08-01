@@ -7,7 +7,7 @@ namespace transit {
 
 absl::StatusOr<TransitHeader> ReadHeader(std::istream& stream) {
   TransitHeader header;
-  stream.read((char*)&header, sizeof(header));
+  stream.read((char*)&header, sizeof(TransitHeader));
   if (stream.bad()) {
     return absl::InvalidArgumentError(
         STATUS_MESSAGE("Failed to read header bytes of transit file. eof: "

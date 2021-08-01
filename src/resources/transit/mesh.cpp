@@ -12,7 +12,7 @@ namespace transit {
 
 template <>
 absl::StatusOr<std::shared_ptr<Mesh>> Load(const TransitDetails& details) {
-  std::ifstream file(details.file);
+  std::ifstream file(details.file, std::ios_base::binary | std::ios_base::in);
   if (!file.is_open()) {
     return absl::FailedPreconditionError(
         STATUS_MESSAGE("Failed to open file \"" << details.file << "\""));

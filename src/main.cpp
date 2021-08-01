@@ -65,7 +65,7 @@ std::shared_ptr<Mesh> squareMesh() {
   "out vec3 normal_frag;\n"                                       \
   "out vec2 uv;\n"                                                \
   "vec4 apply_pose(vec4 point, vec4 weights, ivec4 indices) {\n"  \
-  "  //return point;\n"                                           \
+  "  return point;\n"                                             \
   "  return (pose_data[indices.x] * point) * bone_weights.x\n"    \
   "    + (pose_data[indices.y] * point) * bone_weights.y\n"       \
   "    + (pose_data[indices.z] * point) * bone_weights.z\n"       \
