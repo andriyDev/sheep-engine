@@ -8,6 +8,7 @@ executable('resource_converter', [
   'src/resources/transit/skeleton.cpp',
   'src/resources/transit/skin.cpp',
   'src/resources/transit/transit_write.cpp',
+  join_paths(meson.source_root(), 'src/utility/disjoint_set.cpp'),
   join_paths(meson.source_root(), 'src/utility/json.cpp'),
   join_paths(meson.source_root(), 'src/resources/skeleton.cpp'),
 ], include_directories: [
